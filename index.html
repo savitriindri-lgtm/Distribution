@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outlet Performance West Java</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --ink:#1C1B29;
+    --ink-soft:#4A4856;
+    --muted:#8C899A;
+    --bg:#F6F4F1;
+    --card:#FFFFFF;
+    --border:#E6E3DD;
+    --red:#C81E3A;
+    --red-soft:#FBE7EA;
+    --amber:#B8790A;
+    --amber-soft:#FBF0DD;
+    --green:#1B8A5A;
+    --green-soft:#E4F4EC;
+    --grey-soft:#EFEDE9;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:1400px;margin:0 auto;padding:0 20px 60px;}
+
+  .topbar{background:linear-gradient(135deg,#241F33 0%,#3B2340 55%,#5B1D30 100%);color:#fff;padding:26px 20px 22px;}
+  .topbar-inner{max-width:1400px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;}
+  .eyebrow{font-size:12.5px;letter-spacing:.02em;color:#E7B8C2;margin:0 0 6px;}
+  .h1{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;}
+  .h1 small{font-weight:500;color:#D8D3E8;font-size:15px;display:block;margin-top:4px;}
+  .meta-line{font-size:13px;color:#CFC9DB;margin-top:10px;}
+  .meta-line b{color:#fff;font-weight:600;}
+  .btn{
+    border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;
+    padding:9px 16px;border-radius:7px;font-size:13.5px;font-weight:500;cursor:pointer;
+    transition:background .15s ease; white-space:nowrap;
+  }
+  .btn:hover{background:rgba(255,255,255,.18);}
+  .btn-primary{background:var(--red);border-color:var(--red);}
+  .btn-primary:hover{background:#A81830;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--ink-soft);}
+  .btn-ghost:hover{background:var(--grey-soft);}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:6px;}
+
+  .filterbar{background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;box-shadow:0 1px 0 rgba(0,0,0,.02);}
+  .filterbar-inner{max-width:1400px;margin:0 auto;padding:14px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  select, input[type=text]{
+    font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;
+    background:#fff;color:var(--ink);min-width:140px;
+  }
+  select:focus, input:focus{outline:2px solid #C81E3A33;border-color:var(--red);}
+  .chip-row{display:flex;gap:6px;}
+  .chip{
+    padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:500;
+    cursor:pointer;color:var(--ink-soft);
+  }
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .chip[data-cat="KAM"].active{background:#7A2E8C;border-color:#7A2E8C;}
+  .chip[data-cat="KRO"].active{background:var(--red);border-color:var(--red);}
+  .chip[data-cat="PJP"].active{background:#2A6FB0;border-color:#2A6FB0;}
+  .search-wrap{margin-left:auto;display:flex;gap:8px;align-items:center;}
+  .refresh-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;}
+
+  .tabbar{background:var(--card);border-bottom:1px solid var(--border);}
+  .tabbar-inner{max-width:1400px;margin:0 auto;padding:0 20px;display:flex;gap:4px;}
+  .tab-btn{
+    border:none;background:transparent;padding:13px 18px;font-size:13.5px;font-weight:600;color:var(--muted);
+    cursor:pointer;border-bottom:2.5px solid transparent;font-family:inherit;
+  }
+  .tab-btn.active{color:var(--red);border-bottom-color:var(--red);}
+  .tab-btn:hover:not(.active){color:var(--ink-soft);}
+  .hidden{display:none !important;}
+
+  .section-title{font-size:14px;font-weight:600;color:var(--ink-soft);margin:34px 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title .line{flex:1;height:1px;background:var(--border);}
+  .detail-outlet{margin-top:10px;}
+  .detail-outlet summary{user-select:none;}
+  .detail-outlet summary::-webkit-details-marker{color:var(--muted);}
+  .detail-hint{font-weight:400;color:var(--muted);font-size:11.5px;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .kpi-label{font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .kpi-value{font-size:20px;font-weight:700;letter-spacing:-0.01em;}
+  .kpi-sub{font-size:10.5px;color:var(--muted);margin-top:4px;}
+  .kpi-card.warn .kpi-value{color:var(--amber);}
+  .kpi-card.good .kpi-value{color:var(--green);}
+
+  .slab-row{display:flex;gap:12px;margin-top:12px;}
+  .slab-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .slab-top{display:flex;justify-content:space-between;align-items:baseline;}
+  .slab-num{font-size:18px;font-weight:700;}
+  .slab-pct{font-size:11px;color:var(--muted);}
+  .slab-bar{height:5px;border-radius:4px;background:var(--grey-soft);margin-top:8px;overflow:hidden;}
+  .slab-bar > div{height:100%;}
+  .slab-card.zero .slab-num{color:var(--ink-soft);} .slab-card.zero .slab-bar>div{background:#9B98A8;}
+  .slab-card.low .slab-num{color:var(--amber);} .slab-card.low .slab-bar>div{background:var(--amber);}
+  .slab-card.ok .slab-num{color:var(--green);} .slab-card.ok .slab-bar>div{background:var(--green);}
+
+  .cov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;}
+  .cov-card{border-radius:7px;overflow:hidden;border:1px solid var(--border);}
+  .cov-title{background:var(--red);color:#fff;font-weight:700;text-align:center;padding:5px 4px;font-size:11px;letter-spacing:.02em;}
+  .cov-table{width:100%;border-collapse:collapse;}
+  .cov-table th{background:#D6304A;color:#fff;font-size:9.5px;font-weight:600;padding:5px 3px;text-align:center;line-height:1.25;}
+  .cov-table td{background:#FCEFD9;font-weight:700;font-size:14px;text-align:center;padding:7px 3px;color:var(--ink);}
+  @media (max-width:900px){
+    .cov-grid{grid-template-columns:repeat(2,1fr);}
+  }
+
+  .stat-list{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:2px 12px;margin-top:12px;}
+  .stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--border);gap:10px;}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row .lbl{font-size:10px;color:var(--ink-soft);}
+  .stat-row .val{font-size:11.5px;font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+  .stat-row .val.red{color:var(--red);}
+  .stat-row .val.green{color:var(--green);}
+
+  .peta-layout{display:flex;flex-direction:column;gap:14px;}
+  .peta-top{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:start;}
+  .peta-map{height:560px;border-radius:10px;border:1px solid var(--border);overflow:hidden;}
+  .peta-side .stat-list{margin-top:0;}
+  .peta-legends-row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;}
+  @media (max-width:1000px){
+    .peta-top{grid-template-columns:1fr;}
+    .peta-map{height:400px;}
+    .peta-legends-row{flex-direction:column;gap:14px;}
+  }
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;align-items:stretch;}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .panel h3{margin:0 0 14px;font-size:13px;font-weight:600;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:12.5px;}
+  .bar-label{width:150px;flex-shrink:0;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;}
+  .bar-track{flex:1;min-width:0;height:16px;background:var(--grey-soft);border-radius:4px;overflow:hidden;display:flex;}
+  .bar-seg-zero{background:#9B98A8;}
+  .bar-seg-low{background:var(--amber);}
+  .bar-seg-ok{background:var(--green);}
+  .bar-total{width:44px;text-align:right;color:var(--muted);font-size:11.5px;}
+
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:12px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  .table-toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;}
+  .table-count{font-size:13px;color:var(--muted);}
+  table.data{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:10px;font-size:11px;}
+  table.data thead th{
+    text-align:left;background:#FAF9F7;padding:7px 8px;font-weight:600;color:var(--ink-soft);font-size:9.5px;
+    border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;cursor:pointer;position:sticky;top:0;
+  }
+  table.data thead th:last-child{border-right:none;}
+  table.data thead th:hover{color:var(--red);}
+  table.data td{padding:6px 8px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;font-family:'IBM Plex Mono',monospace;}
+  table.data td:last-child{border-right:none;}
+  table.data td.name-cell{font-family:'IBM Plex Sans',sans-serif;white-space:normal;max-width:180px;}
+  table.data tbody tr:hover{background:#FBFAF8;}
+  table.summary{width:100%;border-collapse:collapse;font-size:11px;border:1px solid var(--border);}
+  table.summary th{text-align:right;padding:5px 6px;color:var(--muted);font-weight:600;font-size:9px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:normal;word-break:break-word;line-height:1.2;}
+  table.summary th:last-child{border-right:none;}
+  table.summary th:first-child{text-align:left;}
+  table.summary td{text-align:right;padding:6px 7px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+  table.summary td:last-child{border-right:none;}
+  table.summary td:first-child{text-align:left;font-family:'IBM Plex Sans',sans-serif;color:var(--ink-soft);}
+  table.summary tbody tr:hover{background:#FBFAF8;}
+  .badge{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;display:inline-block;}
+  .badge.KAM{background:#F1E3F4;color:#7A2E8C;}
+  .badge.KRO{background:var(--red-soft);color:var(--red);}
+  .badge.PJP{background:#E1EBF6;color:#2A6FB0;}
+  .badge.zero{background:var(--grey-soft);color:var(--ink-soft);}
+  .badge.low{background:var(--amber-soft);color:var(--amber);}
+  .badge.ok{background:var(--green-soft);color:var(--green);}
+  .pagination{display:flex;gap:6px;justify-content:flex-end;margin-top:12px;align-items:center;font-size:12.5px;color:var(--muted);}
+  .pagination button{border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12.5px;}
+  .pagination button:disabled{opacity:.4;cursor:default;}
+
+  .overlay{position:fixed;inset:0;background:rgba(20,17,26,.5);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:40px 20px;overflow:auto;}
+  #authGate{position:fixed;inset:0;background:linear-gradient(135deg,#241F33 0%,#3B2340 55%,#5B1D30 100%);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
+  #forceChangeGate{position:fixed;inset:0;background:linear-gradient(135deg,#241F33 0%,#3B2340 55%,#5B1D30 100%);display:flex;align-items:center;justify-content:center;z-index:550;padding:20px;}
+  #forceChangeGate.hidden{display:none;}
+  #authGate.hidden{display:none;}
+  .overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:12px;max-width:620px;width:100%;padding:26px 28px 28px;}
+  .modal h2{margin:0 0 4px;font-size:18px;}
+  .modal p.desc{color:var(--muted);font-size:13px;margin:0 0 20px;}
+  .upload-block{border:1px dashed var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+  .upload-block h4{margin:0 0 4px;font-size:13.5px;}
+  .upload-block .hint{font-size:12px;color:var(--muted);margin:0 0 10px;}
+  .upload-block input[type=file]{font-size:12.5px;}
+  .progress-line{font-size:12px;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+
+  .toast{position:fixed;top:74px;right:24px;left:auto;transform:translateY(-10px);background:var(--ink);color:#fff;
+    padding:11px 20px;border-radius:8px;font-size:13px;opacity:0;transition:all .25s ease;z-index:9999;pointer-events:none;max-width:320px;box-shadow:0 6px 18px rgba(0,0,0,.25);}
+  .toast.show{opacity:1;transform:translateY(0);}
+
+  footer.note{margin-top:40px;font-size:12px;color:var(--muted);text-align:center;}
+  @media (max-width:900px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    .slab-row{flex-direction:column;}
+    .two-col{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <p class="eyebrow">WEST JAVA · IM3 &amp; 3ID</p>
+      <h1 class="h1">Outlet Performance
+        <small>Monitoring GA, Sell In &amp; Stock per Outlet</small>
+      </h1>
+      <div class="meta-line">Periode data stok: <b id="metaAsOf">–</b> &nbsp;·&nbsp; Data outlet (pairing) per: <b id="metaMasterDate">–</b> &nbsp;·&nbsp; Diperbarui terakhir: <b id="metaUpdated">–</b></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" id="btnRefresh"><span class="refresh-dot"></span>Cek update</button>
+      <button class="btn" id="btnDownloadAll">Unduh detail (terfilter)</button>
+      <button class="btn" id="btnDownloadCombined">Unduh Laporan Gabungan (CSV)</button>
+      <button class="btn btn-primary hidden" id="btnOpenUpdate">Perbarui data</button>
+      <button class="btn hidden" id="btnManageUsers">Kelola User</button>
+      <button class="btn hidden" id="btnChangePass">Ganti Password</button>
+      <button class="btn hidden" id="btnLogout">Logout (<span id="loginUserLabel"></span>)</button>
+    </div>
+  </div>
+</div>
+
+<div class="filterbar">
+  <div class="filterbar-inner">
+    <select id="fBrand"><option value="">Semua Brand</option></select>
+    <select id="fArea"><option value="">Semua Area</option></select>
+    <select id="fBranch"><option value="">Semua Branch</option></select>
+    <select id="fMicro"><option value="">Semua Micro Cluster</option></select>
+    <div class="chip-row" id="catChips">
+      <div class="chip active" data-cat="">Semua Outlet</div>
+      <div class="chip" data-cat="KAM">KAM</div>
+      <div class="chip" data-cat="KRO">KRO</div>
+      <div class="chip" data-cat="PJP">PJP</div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="fSearch" placeholder="Cari Outlet ID / Nama / Branch (mis. &quot;cell abc kuningan&quot;)…" style="min-width:260px;">
+    </div>
+  </div>
+</div>
+
+<div class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab-btn active" data-tab="peta">Peta &amp; Summary</button>
+    <button class="tab-btn" data-tab="lowbalance">Low Balance</button>
+    <button class="tab-btn" data-tab="sellin">Sell In &amp; GA</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div id="tabPeta" class="tab-panel">
+
+  <div class="section-title">Peta Outlet <div class="line"></div></div>
+  <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">
+    Titik <b style="color:var(--red);">merah</b> = outlet dengan minimal satu masalah (tidak ada GA, tidak ada Sell In SP, tidak ada Sell In Saldo, atau tidak ada stock sama sekali). Titik <b style="color:var(--green);">hijau</b> = semuanya terpenuhi. Klik titik untuk detail outlet. Klik area kabupaten untuk drill-down ke Branch-nya. Filter Area/Branch/Micro Cluster/Kategori di atas ikut membatasi titik yang tampil.
+  </p>
+  <div class="peta-layout">
+    <div class="peta-top">
+      <div id="mapContainer" class="peta-map"></div>
+      <div class="peta-side">
+        <h3 style="margin:0 0 6px;font-size:13px;font-weight:600;">Summary (sesuai filter)</h3>
+        <div class="stat-list" id="petaStatList"></div>
+      </div>
+    </div>
+    <div class="peta-legends-row">
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;font-weight:600;">Legenda Titik</h3>
+        <div class="legend" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span><i class="dot" style="background:var(--red);border-radius:50%;"></i>Ada masalah (No GA / No Sell In SP / No Sell In Saldo / No Stock Sama Sekali)</span>
+          <span><i class="dot" style="background:var(--green);border-radius:50%;"></i>Lengkap</span>
+          <span id="mapPointCount" style="color:var(--muted);"></span>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;font-weight:600;">Warna Wilayah per Branch</h3>
+        <div class="legend" id="kabLegend" style="flex-wrap:wrap;gap:10px 18px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="detail-outlet">
+  <summary class="section-title" style="cursor:pointer;">Detail Outlet — Laporan Gabungan (Low Balance + Sell In + GA) <span class="detail-hint">(klik untuk buka/tutup)</span><div class="line"></div></summary>
+  <div class="table-toolbar">
+    <div class="table-count" id="combinedTableCount">–</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" id="btnDownloadCombinedTable">Unduh CSV (data terfilter)</button>
+    </div>
+  </div>
+  <div style="overflow:auto;">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Brand</th>
+        <th>Branch</th>
+        <th>Micro Cluster</th>
+        <th>Outlet ID</th>
+        <th>Nama Outlet</th>
+        <th>Kategori</th>
+        <th>SP Ori Amt</th>
+        <th>SP Inj Amt</th>
+        <th>Vou Ori Amt</th>
+        <th>Vou Inj Amt</th>
+        <th>Salmo Amt</th>
+        <th>Demand 30D</th>
+        <th>DOS</th>
+        <th>Status Saldo</th>
+        <th>GA (MTD)</th>
+        <th>Sell In SP</th>
+        <th>Sell In Voucher</th>
+        <th>Sell In Saldo</th>
+        <th>Tertiary</th>
+        <th>Secondary</th>
+        <th>Status Sell In</th>
+      </tr>
+    </thead>
+    <tbody id="combinedTbody"></tbody>
+  </table>
+  </div>
+  <div class="pagination">
+    <span id="combinedPageInfo">–</span>
+    <button id="combinedPrevPage">‹ Sebelumnya</button>
+    <button id="combinedNextPage">Berikutnya ›</button>
+  </div>
+  </details>
+
+  <footer class="note">
+    Titik outlet menggunakan koordinat LATITUDE/LONGITUDE dari file mapping populasi outlet (IM3 &amp; 3ID, per 07 Sept 2026). Batas wilayah kabupaten/kota disederhanakan dari file GeoJSON yang diunggah; klik area untuk drill-down (hirarki Area → Branch → Micro Cluster mengikuti filter di atas).
+  </footer>
+
+</div>
+
+<div id="tabLowBalance" class="tab-panel hidden">
+
+  <div class="section-title">Summary <div class="line"></div></div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Outlet</div>
+      <div class="kpi-value" id="kpiTotal">–</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Stock Amount (Bn)</div>
+      <div class="kpi-value" id="kpiStock">–</div>
+      <div class="kpi-sub">SP Ori + SP Inj + Voucher Ori + Voucher Inj + Salmo</div>
+    </div>
+    <div class="kpi-card good">
+      <div class="kpi-label">Rata-rata DOS</div>
+      <div class="kpi-value" id="kpiDos">–</div>
+      <div class="kpi-sub">stock amount ÷ demand 30 hari</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Low Balance Salmo (&lt; 100K)</div>
+      <div class="kpi-value" id="kpiLow">–</div>
+      <div class="kpi-sub" id="kpiLowPct">–</div>
+    </div>
+  </div>
+
+  <div class="slab-row">
+    <div class="slab-card zero">
+      <div class="slab-top"><span class="kpi-label">Saldo 0</span></div>
+      <div class="slab-top"><span class="slab-num" id="slabZero">–</span><span class="slab-pct" id="slabZeroPct">–</span></div>
+      <div class="slab-bar"><div id="slabZeroBar" style="width:0%"></div></div>
+    </div>
+    <div class="slab-card low">
+      <div class="slab-top"><span class="kpi-label">Saldo &lt; 100K</span></div>
+      <div class="slab-top"><span class="slab-num" id="slabLow">–</span><span class="slab-pct" id="slabLowPct">–</span></div>
+      <div class="slab-bar"><div id="slabLowBar" style="width:0%"></div></div>
+    </div>
+    <div class="slab-card ok">
+      <div class="slab-top"><span class="kpi-label">Saldo &ge; 100K</span></div>
+      <div class="slab-top"><span class="slab-num" id="slabOk">–</span><span class="slab-pct" id="slabOkPct">–</span></div>
+      <div class="slab-bar"><div id="slabOkBar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <h3 id="breakdownTitle">Slab Saldo per Branch</h3>
+      <div id="breakdownChart"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#9B98A8"></i>Saldo 0</span>
+        <span><i class="dot" style="background:var(--amber)"></i>&lt; 100K</span>
+        <span><i class="dot" style="background:var(--green)"></i>&ge; 100K</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <h3 id="summaryTableTitle" style="margin:0;">Summary per Branch</h3>
+        <button class="btn btn-ghost btn-sm" id="btnDownloadSummaryTable">Unduh CSV</button>
+      </div>
+      <div style="overflow:auto;max-height:360px;">
+      <table class="summary" id="summaryTable">
+        <thead>
+          <tr>
+            <th style="text-align:left;" rowspan="2">Branch</th>
+            <th rowspan="2">Outlet</th>
+            <th rowspan="2">Total Stock Amount (Bn)</th>
+            <th colspan="2" style="text-align:center;">SP Qty</th>
+            <th colspan="2" style="text-align:center;">SP Amount (Bn)</th>
+            <th colspan="2" style="text-align:center;">Voucher Qty</th>
+            <th colspan="2" style="text-align:center;">Voucher Amount (Bn)</th>
+            <th rowspan="2">Salmo Amount (Bn)</th>
+            <th colspan="3" style="text-align:center;">Slab Saldo (Salmo)</th>
+          </tr>
+          <tr>
+            <th style="font-weight:500;">Ori</th>
+            <th style="font-weight:500;">Inj</th>
+            <th style="font-weight:500;">Ori</th>
+            <th style="font-weight:500;">Inj</th>
+            <th style="font-weight:500;">Ori</th>
+            <th style="font-weight:500;">Inj</th>
+            <th style="font-weight:500;">Ori</th>
+            <th style="font-weight:500;">Inj</th>
+            <th style="font-weight:500;">Saldo 0</th>
+            <th style="font-weight:500;">&lt;100K</th>
+            <th style="font-weight:500;">&ge;100K</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTbody"></tbody>
+        <tfoot id="summaryTfoot"></tfoot>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <details class="detail-outlet">
+  <summary class="section-title" style="cursor:pointer;">Detail Outlet <span class="detail-hint">(klik untuk buka/tutup)</span><div class="line"></div></summary>
+  <div class="table-toolbar">
+    <div class="table-count" id="tableCount">–</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" id="btnDownloadTable">Unduh CSV (data terfilter)</button>
+    </div>
+  </div>
+  <div style="overflow:auto;">
+  <table class="data">
+    <thead>
+      <tr>
+        <th data-k="brandIdx">Brand</th>
+        <th data-k="branchIdx">Branch</th>
+        <th data-k="microIdx">Micro Cluster</th>
+        <th data-k="outletId">Outlet ID</th>
+        <th data-k="outletName">Nama Outlet</th>
+        <th data-k="catIdx">Kategori</th>
+        <th data-k="spoQty">SP Ori Qty</th>
+        <th data-k="spoAmt">SP Ori Amt</th>
+        <th data-k="spiQty">SP Inj Qty</th>
+        <th data-k="spiAmt">SP Inj Amt</th>
+        <th data-k="voQty">Vou Ori Qty</th>
+        <th data-k="voAmt">Vou Ori Amt</th>
+        <th data-k="viQty">Vou Inj Qty</th>
+        <th data-k="viAmt">Vou Inj Amt</th>
+        <th data-k="salAmt">Salmo Amt</th>
+        <th data-k="demandAmt">Demand 30D</th>
+        <th data-k="dos">DOS</th>
+        <th data-k="status">Status Saldo</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  </div>
+  <div class="pagination">
+    <span id="pageInfo">–</span>
+    <button id="prevPage">‹ Sebelumnya</button>
+    <button id="nextPage">Berikutnya ›</button>
+  </div>
+  </details>
+
+  <footer class="note">
+    DOS dihitung dari total stock amount (SP Ori + SP Inj + Voucher Ori + Voucher Inj + Salmo) dibagi total demand 30 hari per outlet. Baris dengan flag sp_0 / vou_0 tidak dihitung ke dalam stock. Low balance dihitung khusus dari saldo Salmo &lt; Rp100.000. Data stok diperbarui manual melalui tombol "Perbarui data"; data pairing outlet (Area/Branch/Micro Cluster/Flag KAM-KRO) diperbarui terpisah, biasanya sebulan sekali.
+  </footer>
+
+</div>
+
+<div id="tabSellin" class="tab-panel hidden">
+
+  <div class="section-title">Summary Sell In &amp; GA <div class="line"></div></div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Outlet</div>
+      <div class="kpi-value" id="siKpiTotal">–</div>
+    </div>
+    <div class="kpi-card good">
+      <div class="kpi-label">Total GA (MTD)</div>
+      <div class="kpi-value" id="siKpiGa">–</div>
+      <div class="kpi-sub" id="siKpiGaSub">rata-rata per outlet</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Sell In Amount (Bn)</div>
+      <div class="kpi-value" id="siKpiSellin">–</div>
+      <div class="kpi-sub">SP + Voucher + Saldo</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Total Tertiary + Secondary (Bn)</div>
+      <div class="kpi-value" id="siKpiTS">–</div>
+      <div class="kpi-sub" id="siKpiTSsub">–</div>
+    </div>
+  </div>
+
+  <div class="cov-grid" id="covGrid"></div>
+
+  <div class="slab-row">
+    <div class="slab-card zero">
+      <div class="slab-top"><span class="kpi-label">Sell In SP (Bn)</span></div>
+      <div class="slab-top"><span class="slab-num" id="siSp">–</span><span class="slab-pct" id="siSpPct">–</span></div>
+      <div class="slab-bar"><div id="siSpBar" style="width:0%;background:#9B98A8;"></div></div>
+    </div>
+    <div class="slab-card low">
+      <div class="slab-top"><span class="kpi-label">Sell In Voucher (Bn)</span></div>
+      <div class="slab-top"><span class="slab-num" id="siVou">–</span><span class="slab-pct" id="siVouPct">–</span></div>
+      <div class="slab-bar"><div id="siVouBar" style="width:0%;background:var(--amber);"></div></div>
+    </div>
+    <div class="slab-card ok">
+      <div class="slab-top"><span class="kpi-label">Sell In Saldo (Bn)</span></div>
+      <div class="slab-top"><span class="slab-num" id="siSaldo">–</span><span class="slab-pct" id="siSaldoPct">–</span></div>
+      <div class="slab-bar"><div id="siSaldoBar" style="width:0%;background:var(--green);"></div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <h3 id="siBreakdownTitle">Total GA per Branch</h3>
+      <div id="siBreakdownChart"></div>
+    </div>
+    <div class="panel">
+      <h3 id="siSummaryTitle">Summary Sell In &amp; GA per Branch</h3>
+      <div style="overflow:auto;max-height:360px;">
+      <table class="summary" id="siSummaryTable">
+        <thead>
+          <tr>
+            <th style="text-align:left;" rowspan="2">Branch</th>
+            <th rowspan="2">Outlet</th>
+            <th rowspan="2">Total GA</th>
+            <th rowspan="2">Sell In SP (Bn)</th>
+            <th rowspan="2">Sell In Voucher (Bn)</th>
+            <th rowspan="2">Sell In Saldo (Bn)</th>
+            <th rowspan="2">Tertiary (Bn)</th>
+            <th rowspan="2">Secondary (Bn)</th>
+            <th colspan="2" style="text-align:center;">SP</th>
+            <th colspan="2" style="text-align:center;">Voucher</th>
+            <th colspan="2" style="text-align:center;">Saldo</th>
+            <th colspan="2" style="text-align:center;">GA</th>
+          </tr>
+          <tr>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+          </tr>
+        </thead>
+        <tbody id="siSummaryTbody"></tbody>
+        <tfoot id="siSummaryTfoot"></tfoot>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <h3>Total GA per Kategori (PJP / KAM / KRO)</h3>
+      <div id="siCatChart"></div>
+    </div>
+    <div class="panel">
+      <h3>Summary Sell In &amp; GA per Kategori</h3>
+      <div style="overflow:auto;">
+      <table class="summary" id="siCatTable">
+        <thead>
+          <tr>
+            <th style="text-align:left;" rowspan="2">Kategori</th>
+            <th rowspan="2">Outlet</th>
+            <th rowspan="2">Total GA</th>
+            <th rowspan="2">Sell In SP (Bn)</th>
+            <th rowspan="2">Sell In Voucher (Bn)</th>
+            <th rowspan="2">Sell In Saldo (Bn)</th>
+            <th rowspan="2">Tertiary (Bn)</th>
+            <th rowspan="2">Secondary (Bn)</th>
+            <th colspan="2" style="text-align:center;">SP</th>
+            <th colspan="2" style="text-align:center;">Voucher</th>
+            <th colspan="2" style="text-align:center;">Saldo</th>
+            <th colspan="2" style="text-align:center;">GA</th>
+          </tr>
+          <tr>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+            <th style="font-weight:500;">#With</th><th style="font-weight:500;">%With</th>
+          </tr>
+        </thead>
+        <tbody id="siCatTbody"></tbody>
+        <tfoot id="siCatTfoot"></tfoot>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <details class="detail-outlet">
+  <summary class="section-title" style="cursor:pointer;">Detail Outlet — Sell In &amp; GA <span class="detail-hint">(klik untuk buka/tutup)</span><div class="line"></div></summary>
+  <div class="table-toolbar">
+    <div class="table-count" id="siTableCount">–</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" id="siBtnDownloadTable">Unduh CSV (data terfilter)</button>
+    </div>
+  </div>
+  <div style="overflow:auto;">
+  <table class="data">
+    <thead>
+      <tr>
+        <th data-sk="brandIdx">Brand</th>
+        <th data-sk="branchIdx">Branch</th>
+        <th data-sk="microIdx">Micro Cluster</th>
+        <th data-sk="outletId">Outlet ID</th>
+        <th data-sk="outletName">Nama Outlet</th>
+        <th data-sk="catIdx">Kategori</th>
+        <th data-sk="rguGa">GA (MTD)</th>
+        <th data-sk="sellinSp">Sell In SP</th>
+        <th data-sk="sellinVou">Sell In Voucher</th>
+        <th data-sk="sellinSaldo">Sell In Saldo</th>
+        <th data-sk="tertiary">Tertiary</th>
+        <th data-sk="secondary">Secondary</th>
+        <th data-sk="status">Status Sell In</th>
+      </tr>
+    </thead>
+    <tbody id="siTbody"></tbody>
+  </table>
+  </div>
+  <div class="pagination">
+    <span id="siPageInfo">–</span>
+    <button id="siPrevPage">‹ Sebelumnya</button>
+    <button id="siNextPage">Berikutnya ›</button>
+  </div>
+  </details>
+
+  <footer class="note">
+    Data Sell In &amp; GA bersumber dari file DSE_PROD (Sell In SP/Voucher/Saldo, Tertiary, Secondary) dan RGUGA (GA/aktivasi) bulan berjalan, dicocokkan ke outlet pairing yang sama dengan tab Low Balance. Nilai GA adalah akumulasi month-to-date sampai tanggal data terakhir.
+  </footer>
+
+</div>
+
+</div>
+
+<div class="overlay" id="usersOverlay">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" id="closeUsers">&times;</button>
+    <h2>Kelola User</h2>
+    <p class="desc">Semua user baru otomatis dapat password default <b id="defaultPassLabel"></b> — sampaikan ke masing-masing user, dan mereka bisa login pakai username + password default itu.</p>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Tambah username baru (satu-satu)</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="newUserInput" placeholder="mis. budi.santoso / DSE0231 / 3210458" style="flex:1;">
+        <button class="btn btn-primary" id="btnAddUser" style="background:var(--red);color:#fff;">Tambah</button>
+      </div>
+      <div class="progress-line" id="userAddMsg"></div>
+    </div>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Atau upload daftar user sekaligus (.csv/.txt, satu username per baris)</label>
+      <input type="file" id="bulkUserFile" accept=".csv,.txt">
+      <div class="progress-line" id="bulkUserMsg"></div>
+    </div>
+    <div style="max-height:300px;overflow:auto;margin-top:10px;">
+      <table class="summary" style="width:100%;">
+        <thead><tr><th style="text-align:left;">Username</th><th style="text-align:left;">Password</th><th style="text-align:left;">Role</th><th></th></tr></thead>
+        <tbody id="userListBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="authGate">
+  <div class="modal" style="max-width:380px;">
+    <h2 style="margin-top:0;">Login untuk Akses Dashboard</h2>
+    <p class="desc">Masukkan username &amp; password yang sudah didaftarkan untuk membuka dashboard ini.</p>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Username</label>
+      <input type="text" id="loginUser" style="width:100%;margin-bottom:10px;" autocomplete="username">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Password</label>
+      <input type="password" id="loginPass" style="width:100%;" autocomplete="current-password">
+      <div class="progress-line" id="loginError" style="color:var(--red);"></div>
+      <button class="btn btn-primary" id="btnDoLogin" style="margin-top:12px;background:var(--red);color:#fff;width:100%;">Masuk</button>
+    </div>
+  </div>
+</div>
+
+<div id="forceChangeGate" class="hidden">
+  <div class="modal" style="max-width:380px;">
+    <h2 style="margin-top:0;">Buat Password Baru</h2>
+    <p class="desc">Ini login pertamamu (atau password kamu baru saja direset admin) — buat password baru sebelum lanjut.</p>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Password Baru</label>
+      <input type="password" id="forceNewPass" style="width:100%;margin-bottom:10px;" autocomplete="new-password">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Ulangi Password Baru</label>
+      <input type="password" id="forceNewPass2" style="width:100%;" autocomplete="new-password">
+      <div class="progress-line" id="forceChangeError" style="color:var(--red);"></div>
+      <button class="btn btn-primary" id="btnForceChangePass" style="margin-top:12px;background:var(--red);color:#fff;width:100%;">Simpan &amp; Lanjut</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="changePassOverlay">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeChangePass">&times;</button>
+    <h2>Ganti Password</h2>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Password Saat Ini</label>
+      <input type="password" id="cpOldPass" style="width:100%;margin-bottom:10px;" autocomplete="current-password">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Password Baru</label>
+      <input type="password" id="cpNewPass" style="width:100%;margin-bottom:10px;" autocomplete="new-password">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Ulangi Password Baru</label>
+      <input type="password" id="cpNewPass2" style="width:100%;" autocomplete="new-password">
+      <div class="progress-line" id="cpError" style="color:var(--red);"></div>
+      <button class="btn btn-primary" id="btnDoChangePass" style="margin-top:12px;background:var(--red);color:#fff;width:100%;">Simpan Password Baru</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="updateOverlay">
+  <div class="modal">
+    <button class="modal-close" id="closeUpdate">&times;</button>
+    <h2>Perbarui data</h2>
+    <p class="desc">Perubahan akan tersimpan online — siapa pun yang membuka link/file dashboard ini akan melihat data terbaru begitu mereka refresh atau membuka ulang.</p>
+
+    <div class="upload-block">
+      <h4>1. Data Stok Outlet (CSV)</h4>
+      <p class="hint">Update rutin. Kolom yang dipakai: brand, as_of_date, outlet_id, flag_position, flag, qty, amt.</p>
+      <input type="file" id="stockFile" accept=".csv">
+      <div class="progress-line" id="stockProgress"></div>
+    </div>
+
+    <div class="upload-block">
+      <h4>2. Data Outlet / Pairing (Excel .xlsx)</h4>
+      <p class="hint">Update bulanan. Sheet "IM3" dan "3ID"; outlet dengan PJP = "YES" atau Flag KAM = "KAM" yang dipakai. Kategori: KAM (Flag KAM) diprioritaskan, lalu KRO (Flag), sisanya PJP.</p>
+      <input type="file" id="masterFile" accept=".xlsx">
+      <div class="progress-line" id="masterProgress"></div>
+    </div>
+
+    <div class="upload-block">
+      <h4>3. Data Sell In &amp; GA — DSE_PROD (CSV, per brand)</h4>
+      <p class="hint">Upload file IM3_DSE_PROD dan/atau 3ID_DSE_PROD bulan berjalan (region difilter otomatis ke WEST JAVA). Brand terdeteksi otomatis dari struktur kolom file.</p>
+      <input type="file" id="sellinFile" accept=".csv">
+      <div class="progress-line" id="sellinProgress"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+</script>
+<script>
+
+</script>
+<script>
+
+</script>
+<script>
+
+</script>
+<script>
+(function(){
+
+const FIELDS_O = ['brandIdx','areaIdx','branchIdx','microIdx','outletId','outletName','catIdx',
+  'spoQty','spoAmt','spiQty','spiAmt','voQty','voAmt','viQty','viAmt','salQty','salAmt','demandAmt'];
+const IDX = Object.fromEntries(FIELDS_O.map((k,i)=>[k,i]));
+
+const FIELDS_S = ['brandIdx','areaIdx','branchIdx','microIdx','outletId','outletName','catIdx',
+  'rguGa','qsso','sellinSp','sellinVou','sellinSaldo','tertiary','secondary'];
+const IDX_S = Object.fromEntries(FIELDS_S.map((k,i)=>[k,i]));
+
+let META = null;
+let OUTLETS = [];
+let MASTER = {};
+
+let SMETA = null;
+let SELLIN_OUTLETS = [];
+let filteredSellin = [];
+
+let GEO_POINTS = [];
+let GIDX = {};
+let KAB_GEOJSON = null;
+let mapInstance = null;
+let mapMarkerLayer = null;
+let kabLayer = null;
+let siPage = 1;
+let siSortKey = 'rguGa', siSortDir = -1;
+let activeTab = 'peta';
+let combinedPage = 1;
+
+let filtered = [];
+let page = 1;
+const PAGE_SIZE = 60;
+let sortKey = 'salAmt', sortDir = 1;
+let activeCat = '';
+let pollTimer = null;
+
+const fmtN = n => Math.round(n).toLocaleString('id-ID');
+// amount columns/KPIs are always expressed in Bn (billions) — no "Rp" prefix, the unit
+// is stated once in the header/label instead (e.g. "Sell In Voucher (Bn)")
+function fmtBn(n){
+  return (n/1e9).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function stockAmt(r){ return r[IDX.spoAmt]+r[IDX.spiAmt]+r[IDX.voAmt]+r[IDX.viAmt]+r[IDX.salAmt]; }
+function catName(i){ return META.cats[i]; }
+function outletStatus(salAmt){
+  if(salAmt <= 0) return 'zero';
+  if(salAmt < 100000) return 'low';
+  return 'ok';
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+// ---------- storage helpers ----------
+// Google Apps Script Web App backend — replaces Claude's window.storage so the
+// dashboard works fully standalone (any browser, any device, no Claude needed).
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwufdPVWe4ah-0L6nu0kCEhz2XVd2TpVtZ7gncQsHRod5EbCWAuQPBPET6u-64P6hvu9w/exec';
+
+async function storageGet(key){
+  try{
+    const res = await fetch(`${GAS_URL}?action=get&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if(!data.ok || !data.found) return null;
+    return JSON.parse(data.value);
+  }catch(e){ console.error('storage get failed', key, e); return null; }
+}
+async function storageSet(key, val){
+  try{
+    // sent as text/plain on purpose — this avoids a CORS "preflight" request
+    // that Apps Script Web Apps don't handle well; the body is still JSON,
+    // just parsed manually on the Apps Script side.
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'set', key: key, value: JSON.stringify(val) })
+    });
+    const data = await res.json();
+    return !!(data && data.ok);
+  }catch(e){ console.error('storage set failed', key, e); return false; }
+}
+
+async function loadFromStorageOrSeed(){
+  const meta = await storageGet('meta');
+  const hasEmbedded = !!window.__SEED__;
+  const embeddedFields = hasEmbedded ? JSON.stringify(window.__SEED__.meta.fields_outlet) : null;
+  const schemaOk = hasEmbedded ? (meta && meta.fields_outlet && JSON.stringify(meta.fields_outlet) === embeddedFields) : !!(meta && meta.fields_outlet);
+  // dataVersion catches cases where the structure (fields_outlet) didn't change but the
+  // underlying data content did (e.g. a categorisation/mapping fix) — without this, a
+  // browser that auto-seeded earlier would keep serving stale content forever even after
+  // the embedded seed is corrected, since the schema check alone would still pass. Only
+  // applies when the data was never manually updated (lastUpdated null) — a real upload
+  // from the user always takes priority over the bundled seed, regardless of version.
+  const embeddedVersion = hasEmbedded ? (window.__SEED__.meta.dataVersion || 0) : 0;
+  const versionOk = meta && (meta.dataVersion || 0) >= embeddedVersion;
+  const contentOk = schemaOk && (versionOk || (meta && meta.lastUpdated));
+
+  let loadedOk = false;
+  if(meta && meta.branches && contentOk){
+    META = meta;
+    const chunks = await Promise.all(meta.branches.map((b,i)=>storageGet('outlets_b'+i)));
+    OUTLETS = [];
+    chunks.forEach(c=>{ if(c) OUTLETS = OUTLETS.concat(c); });
+    MASTER = (await storageGet('master')) || {};
+    // sanity check: stored chunk count should match what meta claims — otherwise a
+    // previous save was interrupted/partial and we should not serve incomplete data
+    loadedOk = OUTLETS.length > 0 && (!meta.totalOutlets || OUTLETS.length >= meta.totalOutlets * 0.98);
+  }
+
+  if(!loadedOk){
+    if(meta && meta.lastUpdated && contentOk){
+      setTimeout(()=>showToast('Sebagian data online tidak lengkap — dashboard dipulihkan ke data terakhir yang valid.'), 800);
+    } else if(meta && !contentOk && hasEmbedded){
+      setTimeout(()=>showToast('Ada perbaikan data terbaru dari sistem — dashboard disinkronkan ulang.'), 800);
+    }
+    if(hasEmbedded){
+      META = window.__SEED__.meta;
+      OUTLETS = window.__SEED__.outlets;
+      MASTER = window.__SEED__.master || {};
+      persistAll();
+    } else if(!meta){
+      // no embedded fallback (slim/hosted build) and nothing in the sheet yet either
+      setTimeout(()=>showToast('Belum ada data tersimpan — upload data stok lewat "Perbarui data" untuk mulai.'), 800);
+      META = { brands:[], areas:[], branches:[], micros:[], cats:['KAM','KRO','PJP'], branchByArea:{}, microByBranch:{}, brandCounts:{}, totalOutlets:0, fields_outlet: [] };
+      OUTLETS = [];
+      MASTER = {};
+    }
+  }
+}
+
+async function persistAll(){
+  const byBranch = {};
+  META.branches.forEach((b,i)=>byBranch[i]=[]);
+  OUTLETS.forEach(row=>{ byBranch[row[IDX.branchIdx]].push(row); });
+
+  // write branch chunks sequentially (avoids concurrent-write/rate-limit issues that
+  // can silently drop some chunks if fired all at once)
+  for(let i=0;i<META.branches.length;i++){
+    let ok = await storageSet('outlets_b'+i, byBranch[i]);
+    if(!ok){ await new Promise(r=>setTimeout(r,300)); ok = await storageSet('outlets_b'+i, byBranch[i]); }
+  }
+  await storageSet('master', MASTER);
+  // meta is written last, once all chunks are confirmed present, so a reader never
+  // sees a "complete" meta pointing at incomplete chunks
+  await storageSet('meta', META);
+}
+
+async function loadSellinFromStorageOrSeed(){
+  const smeta = await storageGet('sellin_meta');
+  const hasEmbedded = !!window.__SEED_SELLIN__;
+  const embeddedFields = hasEmbedded ? JSON.stringify(window.__SEED_SELLIN__.meta.fields_sellin) : null;
+  const schemaOk = hasEmbedded ? (smeta && smeta.fields_sellin && JSON.stringify(smeta.fields_sellin) === embeddedFields) : !!(smeta && smeta.fields_sellin);
+  const embeddedVersion = hasEmbedded ? (window.__SEED_SELLIN__.meta.dataVersion || 0) : 0;
+  const versionOk = smeta && (smeta.dataVersion || 0) >= embeddedVersion;
+  const contentOk = schemaOk && (versionOk || (smeta && smeta.lastUpdated));
+
+  let loadedOk = false;
+  if(smeta && contentOk){
+    const chunks = await Promise.all(META.branches.map((b,i)=>storageGet('sellin_b'+i)));
+    let outlets = [];
+    chunks.forEach(c=>{ if(c) outlets = outlets.concat(c); });
+    loadedOk = outlets.length > 0 && (!smeta.totalOutlets || outlets.length >= smeta.totalOutlets * 0.98);
+    if(loadedOk){ SMETA = smeta; SELLIN_OUTLETS = outlets; }
+  }
+  if(!loadedOk && hasEmbedded){
+    SMETA = window.__SEED_SELLIN__.meta;
+    SELLIN_OUTLETS = window.__SEED_SELLIN__.outlets;
+    SMETA.totalOutlets = SELLIN_OUTLETS.length;
+    persistSellin();
+  } else if(!loadedOk){
+    SMETA = { fields_sellin: [], totalOutlets: 0 };
+    SELLIN_OUTLETS = [];
+  }
+}
+
+async function persistSellin(){
+  const byBranch = {};
+  META.branches.forEach((b,i)=>byBranch[i]=[]);
+  SELLIN_OUTLETS.forEach(row=>{ byBranch[row[IDX_S.branchIdx]].push(row); });
+  for(let i=0;i<META.branches.length;i++){
+    let ok = await storageSet('sellin_b'+i, byBranch[i]);
+    if(!ok){ await new Promise(r=>setTimeout(r,300)); ok = await storageSet('sellin_b'+i, byBranch[i]); }
+  }
+  await storageSet('sellin_meta', SMETA);
+}
+
+// ---------- polling for near-real-time updates ----------
+function startPolling(){
+  pollTimer = setInterval(checkForRemoteUpdate, 45000);
+}
+async function checkForRemoteUpdate(silent){
+  const remoteMeta = await storageGet('meta');
+  let changed = false;
+  if(remoteMeta){
+    const schemaOk = remoteMeta.fields_outlet && JSON.stringify(remoteMeta.fields_outlet) === JSON.stringify(FIELDS_O);
+    if(schemaOk){
+      const localStamp = META.lastUpdated || META.masterUpdated || '';
+      const remoteStamp = remoteMeta.lastUpdated || remoteMeta.masterUpdated || '';
+      if(remoteStamp && remoteStamp !== localStamp){
+        const chunks = await Promise.all(remoteMeta.branches.map((b,i)=>storageGet('outlets_b'+i)));
+        let newOutlets = [];
+        chunks.forEach(c=>{ if(c) newOutlets = newOutlets.concat(c); });
+        const complete = newOutlets.length > 0 && (!remoteMeta.totalOutlets || newOutlets.length >= remoteMeta.totalOutlets * 0.98);
+        if(complete){
+          META = remoteMeta; OUTLETS = newOutlets;
+          MASTER = (await storageGet('master')) || {};
+          changed = true;
+        }
+      }
+    }
+  }
+
+  const remoteSMeta = await storageGet('sellin_meta');
+  if(remoteSMeta){
+    const schemaOk = remoteSMeta.fields_sellin && JSON.stringify(remoteSMeta.fields_sellin) === JSON.stringify(FIELDS_S);
+    if(schemaOk && remoteSMeta.lastUpdated && remoteSMeta.lastUpdated !== (SMETA && SMETA.lastUpdated)){
+      const chunks = await Promise.all(META.branches.map((b,i)=>storageGet('sellin_b'+i)));
+      let newOutlets = [];
+      chunks.forEach(c=>{ if(c) newOutlets = newOutlets.concat(c); });
+      const complete = newOutlets.length > 0 && (!remoteSMeta.totalOutlets || newOutlets.length >= remoteSMeta.totalOutlets * 0.98);
+      if(complete){ SMETA = remoteSMeta; SELLIN_OUTLETS = newOutlets; changed = true; }
+    }
+  }
+
+  if(changed){
+    refreshHeaderMeta();
+    populateAreaBranch();
+    applyFilters();
+    showToast('Data diperbarui otomatis — ada update baru.');
+  } else if(!silent){
+    showToast('Data sudah yang terbaru.');
+  }
+}
+
+// ---------- filter UI ----------
+function populateAreaBranch(){
+  const fBrand = document.getElementById('fBrand');
+  const fArea = document.getElementById('fArea');
+  fBrand.innerHTML = '<option value="">Semua Brand</option>' + META.brands.map(b=>`<option value="${b}">${b} (${fmtN((META.brandCounts&&META.brandCounts[b])||0)})</option>`).join('');
+  fArea.innerHTML = '<option value="">Semua Area</option>' + META.areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+  refreshBranchOptions();
+  refreshMicroOptions();
+}
+function refreshBranchOptions(){
+  const area = document.getElementById('fArea').value;
+  const fBranch = document.getElementById('fBranch');
+  const cur = fBranch.value;
+  let branches = META.branches;
+  if(area) branches = META.branchByArea[area] || [];
+  fBranch.innerHTML = '<option value="">Semua Branch</option>' + branches.map(b=>`<option value="${b}">${b}</option>`).join('');
+  if(branches.includes(cur)) fBranch.value = cur;
+}
+function refreshMicroOptions(){
+  const branch = document.getElementById('fBranch').value;
+  const fMicro = document.getElementById('fMicro');
+  const cur = fMicro.value;
+  let micros = META.micros;
+  if(branch) micros = META.microByBranch[branch] || [];
+  fMicro.innerHTML = '<option value="">Semua Micro Cluster</option>' + micros.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(micros.includes(cur)) fMicro.value = cur;
+}
+
+// ---------- filtering ----------
+function applyFilters(){
+  const brand = document.getElementById('fBrand').value;
+  const area = document.getElementById('fArea').value;
+  const branch = document.getElementById('fBranch').value;
+  const micro = document.getElementById('fMicro').value;
+  const search = document.getElementById('fSearch').value.trim().toLowerCase();
+
+  const brandI = brand ? META.brands.indexOf(brand) : -1;
+  const areaI = area ? META.areas.indexOf(area) : -1;
+  const branchI = branch ? META.branches.indexOf(branch) : -1;
+  const microI = micro ? META.micros.indexOf(micro) : -1;
+  const catI = activeCat ? META.cats.indexOf(activeCat) : -1;
+
+  // shared filter predicate — both OUTLETS and SELLIN_OUTLETS use the same
+  // brandIdx/areaIdx/branchIdx/microIdx/outletId/outletName/catIdx layout (positions 0-6)
+  const searchTokens = search ? search.split(/\s+/).filter(Boolean) : [];
+  function passes(r){
+    if(brandI>=0 && r[0]!==brandI) return false;
+    if(areaI>=0 && r[1]!==areaI) return false;
+    if(branchI>=0 && r[2]!==branchI) return false;
+    if(microI>=0 && r[3]!==microI) return false;
+    if(catI>=0 && r[6]!==catI) return false;
+    if(searchTokens.length){
+      // search matches outlet ID, outlet name, branch, or micro cluster — every typed
+      // word must be found somewhere (order-independent), so e.g. "abc kuningan" narrows
+      // down a common outlet name by also requiring the branch to contain "kuningan"
+      const hay = (String(r[4]) + ' ' + String(r[5]) + ' ' + META.branches[r[2]]).toLowerCase();
+      if(!searchTokens.every(t=>hay.includes(t))) return false;
+    }
+    return true;
+  }
+
+  filtered = OUTLETS.filter(passes);
+  filteredSellin = SELLIN_OUTLETS.filter(passes);
+
+  sortFiltered();
+  sortFilteredSellin();
+  page = 1;
+  siPage = 1;
+  combinedPage = 1;
+  renderAll();
+  renderSellinAll();
+  if(GEO_POINTS.length) renderPetaAll();
+
+  // let the person know clearly when their search text doesn't match anything at all,
+  // instead of silently showing an empty table
+  if(searchTokens.length && filtered.length===0 && filteredSellin.length===0){
+    showToast(`Nama outlet "${search}" tidak ditemukan di database.`);
+  }
+}
+
+function sortFiltered(){
+  const key = sortKey;
+  filtered.sort((a,b)=>{
+    let va, vb;
+    if(key==='dos'){
+      va = a[IDX.demandAmt] ? stockAmt(a)/a[IDX.demandAmt] : -1;
+      vb = b[IDX.demandAmt] ? stockAmt(b)/b[IDX.demandAmt] : -1;
+    } else if(key==='outletName'){
+      return sortDir * String(a[IDX.outletName]).localeCompare(String(b[IDX.outletName]));
+    } else if(IDX[key]!==undefined){
+      va = a[IDX[key]]; vb = b[IDX[key]];
+    } else { va=0; vb=0; }
+    return sortDir * ((va>vb) - (va<vb));
+  });
+}
+
+function sortFilteredSellin(){
+  const key = siSortKey;
+  filteredSellin.sort((a,b)=>{
+    let va, vb;
+    if(key==='outletName'){
+      return siSortDir * String(a[IDX_S.outletName]).localeCompare(String(b[IDX_S.outletName]));
+    } else if(IDX_S[key]!==undefined){
+      va = a[IDX_S[key]]; vb = b[IDX_S[key]];
+    } else { va=0; vb=0; }
+    return siSortDir * ((va>vb) - (va<vb));
+  });
+}
+
+// ---------- rendering ----------
+function renderAll(){
+  renderKpis();
+  renderBreakdown();
+  renderSummaryTable();
+  renderTable();
+}
+
+function renderSellinAll(){
+  if(!SMETA) return;
+  renderSellinKpis();
+  renderCoverageCards();
+  renderSellinBreakdown();
+  renderSellinSummaryTable();
+  renderSellinCatSummary();
+  renderSellinTable();
+}
+
+function renderSellinKpis(){
+  const n = filteredSellin.length;
+  document.getElementById('siKpiTotal').textContent = fmtN(n);
+
+  let ga=0, sp=0, vou=0, saldo=0, tertiary=0, secondary=0;
+  filteredSellin.forEach(r=>{
+    ga += r[IDX_S.rguGa]; sp += r[IDX_S.sellinSp]; vou += r[IDX_S.sellinVou]; saldo += r[IDX_S.sellinSaldo];
+    tertiary += r[IDX_S.tertiary]; secondary += r[IDX_S.secondary];
+  });
+  const sellinTotal = sp+vou+saldo;
+
+  document.getElementById('siKpiGa').textContent = fmtN(ga);
+  document.getElementById('siKpiGaSub').textContent = n ? (ga/n).toFixed(2)+' per outlet' : '–';
+  document.getElementById('siKpiSellin').textContent = fmtBn(sellinTotal);
+  document.getElementById('siKpiTS').textContent = fmtBn(tertiary+secondary);
+  document.getElementById('siKpiTSsub').textContent = `Tertiary ${fmtBn(tertiary)} · Secondary ${fmtBn(secondary)}`;
+  document.getElementById('siSp').textContent = fmtBn(sp);
+  document.getElementById('siVou').textContent = fmtBn(vou);
+  document.getElementById('siSaldo').textContent = fmtBn(saldo);
+  document.getElementById('siSpPct').textContent = sellinTotal? (sp/sellinTotal*100).toFixed(0)+'%':'–';
+  document.getElementById('siVouPct').textContent = sellinTotal? (vou/sellinTotal*100).toFixed(0)+'%':'–';
+  document.getElementById('siSaldoPct').textContent = sellinTotal? (saldo/sellinTotal*100).toFixed(0)+'%':'–';
+  document.getElementById('siSpBar').style.width = sellinTotal? (sp/sellinTotal*100)+'%':'0%';
+  document.getElementById('siVouBar').style.width = sellinTotal? (vou/sellinTotal*100)+'%':'0%';
+  document.getElementById('siSaldoBar').style.width = sellinTotal? (saldo/sellinTotal*100)+'%':'0%';
+}
+
+function renderCoverageCards(){
+  const n = filteredSellin.length;
+  function coverage(field, label){
+    let withIt=0, zero=0;
+    filteredSellin.forEach(r=>{ if(r[IDX_S[field]]>0) withIt++; else zero++; });
+    const pct = n? (withIt/n*100).toFixed(0)+'%' : '–';
+    return `<div class="cov-card">
+      <div class="cov-title">${label}</div>
+      <table class="cov-table">
+        <thead><tr><th>#OUTLET with ${label}</th><th>#OUTLET 0 ${label}</th><th>%OUTLET with ${label}</th></tr></thead>
+        <tbody><tr><td>${fmtN(withIt)}</td><td>${fmtN(zero)}</td><td>${pct}</td></tr></tbody>
+      </table>
+    </div>`;
+  }
+  document.getElementById('covGrid').innerHTML =
+    coverage('sellinSp','SELLIN SP') + coverage('sellinVou','SELLIN VOUCHER') +
+    coverage('sellinSaldo','SELLIN SALDO') + coverage('rguGa','GA');
+}
+
+function renderSellinBreakdown(){
+  const ctx = groupContext();
+  document.getElementById('siBreakdownTitle').textContent = 'Total GA ' + ctx.title;
+
+  const agg = {};
+  filteredSellin.forEach(r=>{
+    const g = r[ctx.key===IDX.branchIdx ? IDX_S.branchIdx : IDX_S.microIdx];
+    agg[g] = (agg[g]||0) + r[IDX_S.rguGa];
+  });
+  const rows = Object.keys(agg).map(g=>({name: ctx.names[g], ga: agg[g]})).sort((a,b)=>b.ga-a.ga).slice(0,14);
+  const maxGa = Math.max(1, ...rows.map(r=>r.ga));
+  document.getElementById('siBreakdownChart').innerHTML = rows.map(r=>`
+    <div class="bar-row">
+      <div class="bar-label">${r.name}</div>
+      <div class="bar-track"><div class="bar-seg-ok" style="width:${r.ga/maxGa*100}%"></div></div>
+      <div class="bar-total">${fmtN(r.ga)}</div>
+    </div>`).join('') || '<p style="color:var(--muted);font-size:13px;">Tidak ada data.</p>';
+}
+
+function renderSellinCatSummary(){
+  const agg = {};
+  META.cats.forEach((c,i)=>agg[i] = {outlet:0, ga:0, sp:0, vou:0, saldo:0, tertiary:0, secondary:0, wSp:0, wVou:0, wSaldo:0, wGa:0});
+  filteredSellin.forEach(r=>{
+    const a = agg[r[IDX_S.catIdx]];
+    a.outlet++; a.ga+=r[IDX_S.rguGa]; a.sp+=r[IDX_S.sellinSp]; a.vou+=r[IDX_S.sellinVou];
+    a.saldo+=r[IDX_S.sellinSaldo]; a.tertiary+=r[IDX_S.tertiary]; a.secondary+=r[IDX_S.secondary];
+    if(r[IDX_S.sellinSp]>0) a.wSp++;
+    if(r[IDX_S.sellinVou]>0) a.wVou++;
+    if(r[IDX_S.sellinSaldo]>0) a.wSaldo++;
+    if(r[IDX_S.rguGa]>0) a.wGa++;
+  });
+  const rows = META.cats.map((c,i)=>({name:c, ...agg[i]})).filter(r=>r.outlet>0).sort((a,b)=>b.ga-a.ga);
+
+  const maxGa = Math.max(1, ...rows.map(r=>r.ga));
+  document.getElementById('siCatChart').innerHTML = rows.map(r=>`
+    <div class="bar-row">
+      <div class="bar-label"><span class="badge ${r.name}">${r.name}</span></div>
+      <div class="bar-track"><div class="bar-seg-ok" style="width:${r.ga/maxGa*100}%"></div></div>
+      <div class="bar-total">${fmtN(r.ga)}</div>
+    </div>`).join('') || '<p style="color:var(--muted);font-size:13px;">Tidak ada data.</p>';
+
+  const pct = (w,t) => t? (w/t*100).toFixed(0)+'%' : '–';
+  document.getElementById('siCatTbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td><span class="badge ${r.name}">${r.name}</span></td><td>${fmtN(r.outlet)}</td><td>${fmtN(r.ga)}</td>
+      <td>${fmtBn(r.sp)}</td><td>${fmtBn(r.vou)}</td><td>${fmtBn(r.saldo)}</td>
+      <td>${fmtBn(r.tertiary)}</td><td>${fmtBn(r.secondary)}</td>
+      <td>${fmtN(r.wSp)}</td><td>${pct(r.wSp,r.outlet)}</td>
+      <td>${fmtN(r.wVou)}</td><td>${pct(r.wVou,r.outlet)}</td>
+      <td>${fmtN(r.wSaldo)}</td><td>${pct(r.wSaldo,r.outlet)}</td>
+      <td>${fmtN(r.wGa)}</td><td>${pct(r.wGa,r.outlet)}</td>
+    </tr>`).join('') || '<tr><td colspan="16" style="color:var(--muted);">Tidak ada data.</td></tr>';
+
+  const grand = rows.reduce((acc,r)=>{
+    acc.outlet+=r.outlet; acc.ga+=r.ga; acc.sp+=r.sp; acc.vou+=r.vou; acc.saldo+=r.saldo;
+    acc.tertiary+=r.tertiary; acc.secondary+=r.secondary;
+    acc.wSp+=r.wSp; acc.wVou+=r.wVou; acc.wSaldo+=r.wSaldo; acc.wGa+=r.wGa; return acc;
+  }, {outlet:0,ga:0,sp:0,vou:0,saldo:0,tertiary:0,secondary:0,wSp:0,wVou:0,wSaldo:0,wGa:0});
+  document.getElementById('siCatTfoot').innerHTML = rows.length ? `
+    <tr style="font-weight:700;background:#FAF9F7;">
+      <td>Total West Java</td><td>${fmtN(grand.outlet)}</td><td>${fmtN(grand.ga)}</td>
+      <td>${fmtBn(grand.sp)}</td><td>${fmtBn(grand.vou)}</td><td>${fmtBn(grand.saldo)}</td>
+      <td>${fmtBn(grand.tertiary)}</td><td>${fmtBn(grand.secondary)}</td>
+      <td>${fmtN(grand.wSp)}</td><td>${pct(grand.wSp,grand.outlet)}</td>
+      <td>${fmtN(grand.wVou)}</td><td>${pct(grand.wVou,grand.outlet)}</td>
+      <td>${fmtN(grand.wSaldo)}</td><td>${pct(grand.wSaldo,grand.outlet)}</td>
+      <td>${fmtN(grand.wGa)}</td><td>${pct(grand.wGa,grand.outlet)}</td>
+    </tr>` : '';
+}
+
+function renderSellinSummaryTable(){
+  const ctx = groupContext();
+  document.getElementById('siSummaryTitle').textContent = 'Summary Sell In & GA ' + ctx.title;
+  document.querySelector('#siSummaryTable thead th').textContent = ctx.label==='branch' ? 'Branch' : 'Micro Cluster';
+  const gKey = ctx.key===IDX.branchIdx ? IDX_S.branchIdx : IDX_S.microIdx;
+
+  const agg = {};
+  filteredSellin.forEach(r=>{
+    const g = r[gKey];
+    if(!agg[g]) agg[g] = {outlet:0, ga:0, sp:0, vou:0, saldo:0, tertiary:0, secondary:0, wSp:0, wVou:0, wSaldo:0, wGa:0};
+    const a = agg[g];
+    a.outlet++; a.ga+=r[IDX_S.rguGa]; a.sp+=r[IDX_S.sellinSp]; a.vou+=r[IDX_S.sellinVou];
+    a.saldo+=r[IDX_S.sellinSaldo]; a.tertiary+=r[IDX_S.tertiary]; a.secondary+=r[IDX_S.secondary];
+    if(r[IDX_S.sellinSp]>0) a.wSp++;
+    if(r[IDX_S.sellinVou]>0) a.wVou++;
+    if(r[IDX_S.sellinSaldo]>0) a.wSaldo++;
+    if(r[IDX_S.rguGa]>0) a.wGa++;
+  });
+  const rows = Object.keys(agg).map(g=>({name: ctx.names[g], ...agg[g]})).sort((a,b)=>b.ga-a.ga);
+
+  const pct = (w,t) => t? (w/t*100).toFixed(0)+'%' : '–';
+  document.getElementById('siSummaryTbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.name}</td><td>${fmtN(r.outlet)}</td><td>${fmtN(r.ga)}</td>
+      <td>${fmtBn(r.sp)}</td><td>${fmtBn(r.vou)}</td><td>${fmtBn(r.saldo)}</td>
+      <td>${fmtBn(r.tertiary)}</td><td>${fmtBn(r.secondary)}</td>
+      <td>${fmtN(r.wSp)}</td><td>${pct(r.wSp,r.outlet)}</td>
+      <td>${fmtN(r.wVou)}</td><td>${pct(r.wVou,r.outlet)}</td>
+      <td>${fmtN(r.wSaldo)}</td><td>${pct(r.wSaldo,r.outlet)}</td>
+      <td>${fmtN(r.wGa)}</td><td>${pct(r.wGa,r.outlet)}</td>
+    </tr>`).join('') || '<tr><td colspan="16" style="color:var(--muted);">Tidak ada data.</td></tr>';
+
+  const grand = rows.reduce((acc,r)=>{
+    acc.outlet+=r.outlet; acc.ga+=r.ga; acc.sp+=r.sp; acc.vou+=r.vou; acc.saldo+=r.saldo;
+    acc.tertiary+=r.tertiary; acc.secondary+=r.secondary;
+    acc.wSp+=r.wSp; acc.wVou+=r.wVou; acc.wSaldo+=r.wSaldo; acc.wGa+=r.wGa; return acc;
+  }, {outlet:0,ga:0,sp:0,vou:0,saldo:0,tertiary:0,secondary:0,wSp:0,wVou:0,wSaldo:0,wGa:0});
+  document.getElementById('siSummaryTfoot').innerHTML = rows.length ? `
+    <tr style="font-weight:700;background:#FAF9F7;">
+      <td>Total West Java</td><td>${fmtN(grand.outlet)}</td><td>${fmtN(grand.ga)}</td>
+      <td>${fmtBn(grand.sp)}</td><td>${fmtBn(grand.vou)}</td><td>${fmtBn(grand.saldo)}</td>
+      <td>${fmtBn(grand.tertiary)}</td><td>${fmtBn(grand.secondary)}</td>
+      <td>${fmtN(grand.wSp)}</td><td>${pct(grand.wSp,grand.outlet)}</td>
+      <td>${fmtN(grand.wVou)}</td><td>${pct(grand.wVou,grand.outlet)}</td>
+      <td>${fmtN(grand.wSaldo)}</td><td>${pct(grand.wSaldo,grand.outlet)}</td>
+      <td>${fmtN(grand.wGa)}</td><td>${pct(grand.wGa,grand.outlet)}</td>
+    </tr>` : '';
+}
+
+function sellinStatusFlags(r){
+  const flags = [];
+  if(r[IDX_S.rguGa]<=0) flags.push('No GA');
+  if(r[IDX_S.sellinSp]<=0) flags.push('No SP');
+  if(r[IDX_S.sellinVou]<=0) flags.push('No Voucher');
+  if(r[IDX_S.sellinSaldo]<=0) flags.push('No Sell In Saldo');
+  if(r[IDX_S.sellinSp]<=0 && r[IDX_S.sellinVou]<=0 && r[IDX_S.sellinSaldo]<=0) return ['No Sell In (All)'];
+  return flags.length ? flags : ['Sell In Lengkap'];
+}
+
+function renderSellinTable(){
+  const tbody = document.getElementById('siTbody');
+  document.getElementById('siTableCount').textContent = `${fmtN(filteredSellin.length)} outlet cocok dengan filter`;
+  const start = (siPage-1)*PAGE_SIZE;
+  const pageRows = filteredSellin.slice(start, start+PAGE_SIZE);
+  tbody.innerHTML = pageRows.map(r=>{
+    const flags = sellinStatusFlags(r);
+    const statusHtml = flags.map(f=>`<span class="badge ${f==='Sell In Lengkap'?'ok':'low'}" style="margin-right:3px;">${f}</span>`).join('');
+    return `<tr>
+      <td>${META.brands[r[IDX_S.brandIdx]]}</td>
+      <td>${META.branches[r[IDX_S.branchIdx]]}</td>
+      <td>${META.micros[r[IDX_S.microIdx]]}</td>
+      <td>${r[IDX_S.outletId]}</td>
+      <td class="name-cell">${r[IDX_S.outletName]||'-'}</td>
+      <td><span class="badge ${catName(r[IDX_S.catIdx])}">${catName(r[IDX_S.catIdx])}</span></td>
+      <td>${fmtN(r[IDX_S.rguGa])}</td>
+      <td>${fmtN(r[IDX_S.sellinSp])}</td>
+      <td>${fmtN(r[IDX_S.sellinVou])}</td>
+      <td>${fmtN(r[IDX_S.sellinSaldo])}</td>
+      <td>${fmtN(r[IDX_S.tertiary])}</td>
+      <td>${fmtN(r[IDX_S.secondary])}</td>
+      <td style="white-space:normal;">${statusHtml}</td>
+    </tr>`;
+  }).join('');
+  const totalPages = Math.max(1, Math.ceil(filteredSellin.length/PAGE_SIZE));
+  document.getElementById('siPageInfo').textContent = `Halaman ${siPage} / ${totalPages}`;
+  document.getElementById('siPrevPage').disabled = siPage<=1;
+  document.getElementById('siNextPage').disabled = siPage>=totalPages;
+}
+
+function exportSellinCsv(){
+  const headers = ['brand','area','branch','micro_cluster','outlet_id','outlet_name','kategori','ga_mtd','sellin_sp','sellin_voucher','sellin_saldo','tertiary','secondary','status_sellin'];
+  const lines = [headers.join(',')];
+  filteredSellin.forEach(r=>{
+    lines.push([
+      META.brands[r[IDX_S.brandIdx]], META.areas[r[IDX_S.areaIdx]], META.branches[r[IDX_S.branchIdx]], META.micros[r[IDX_S.microIdx]],
+      r[IDX_S.outletId], JSON.stringify(r[IDX_S.outletName]||''), catName(r[IDX_S.catIdx]),
+      r[IDX_S.rguGa], r[IDX_S.sellinSp], r[IDX_S.sellinVou], r[IDX_S.sellinSaldo], r[IDX_S.tertiary], r[IDX_S.secondary],
+      JSON.stringify(sellinStatusFlags(r).join('; '))
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `sellin_ga_${(document.getElementById('fBranch').value||'semua_branch').replace(/\s+/g,'_')}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderKpis(){
+  const n = filtered.length;
+  document.getElementById('kpiTotal').textContent = fmtN(n);
+
+  let low=0, zero=0, ok=0, stockTotal=0, demand=0;
+  filtered.forEach(r=>{
+    const sal = r[IDX.salAmt];
+    const st = outletStatus(sal);
+    if(st==='zero') zero++; else if(st==='low') low++; else ok++;
+    stockTotal += stockAmt(r);
+    demand += r[IDX.demandAmt];
+  });
+  const lowTotal = low+zero;
+  const avgDos = demand>0 ? (stockTotal/demand) : 0;
+
+  document.getElementById('kpiStock').innerHTML = fmtBn(stockTotal);
+  document.getElementById('kpiDos').textContent = demand>0 ? avgDos.toFixed(2) : '–';
+  document.getElementById('kpiLow').textContent = fmtN(lowTotal);
+  document.getElementById('kpiLowPct').textContent = n? (lowTotal/n*100).toFixed(1)+'% dari outlet terfilter' : '–';
+
+  document.getElementById('slabZero').textContent = fmtN(zero);
+  document.getElementById('slabLow').textContent = fmtN(low);
+  document.getElementById('slabOk').textContent = fmtN(ok);
+  document.getElementById('slabZeroPct').textContent = n? (zero/n*100).toFixed(0)+'%':'–';
+  document.getElementById('slabLowPct').textContent = n? (low/n*100).toFixed(0)+'%':'–';
+  document.getElementById('slabOkPct').textContent = n? (ok/n*100).toFixed(0)+'%':'–';
+  document.getElementById('slabZeroBar').style.width = n? (zero/n*100)+'%':'0%';
+  document.getElementById('slabLowBar').style.width = n? (low/n*100)+'%':'0%';
+  document.getElementById('slabOkBar').style.width = n? (ok/n*100)+'%':'0%';
+}
+
+function groupContext(){
+  const branch = document.getElementById('fBranch').value;
+  if(!branch) return {key: IDX.branchIdx, names: META.branches, label: 'branch', title: 'per Branch'};
+  return {key: IDX.microIdx, names: META.micros, label: 'micro', title: 'per Micro Cluster — ' + branch};
+}
+
+function renderBreakdown(){
+  const ctx = groupContext();
+  document.getElementById('breakdownTitle').textContent = 'Slab Saldo ' + ctx.title;
+
+  const agg = {};
+  filtered.forEach(r=>{
+    const g = r[ctx.key];
+    if(!agg[g]) agg[g] = {zero:0, low:0, ok:0, total:0};
+    const st = outletStatus(r[IDX.salAmt]);
+    agg[g][st]++; agg[g].total++;
+  });
+  const rows = Object.keys(agg).map(g=>({name: ctx.names[g], ...agg[g]}))
+    .sort((a,b)=>b.total-a.total).slice(0,14);
+
+  const html = rows.map(r=>{
+    const t = r.total || 1;
+    const wZero = r.zero/t*100, wLow = r.low/t*100, wOk = r.ok/t*100;
+    return `<div class="bar-row">
+      <div class="bar-label" title="${r.name}">${r.name}</div>
+      <div class="bar-track" title="Saldo 0: ${r.zero} · <100K: ${r.low} · ≥100K: ${r.ok}">
+        <div class="bar-seg-zero" style="width:${wZero}%"></div>
+        <div class="bar-seg-low" style="width:${wLow}%"></div>
+        <div class="bar-seg-ok" style="width:${wOk}%"></div>
+      </div>
+      <div class="bar-total">${r.total}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('breakdownChart').innerHTML = html || '<p style="color:var(--muted);font-size:13px;">Tidak ada data.</p>';
+}
+
+function renderSummaryTable(){
+  const ctx = groupContext();
+  document.getElementById('summaryTableTitle').textContent = 'Summary ' + ctx.title;
+  document.querySelector('#summaryTable thead th').textContent = ctx.label==='branch' ? 'Branch' : 'Micro Cluster';
+
+  const agg = {};
+  filtered.forEach(r=>{
+    const g = r[ctx.key];
+    if(!agg[g]) agg[g] = {outlet:0, stock:0, spoQ:0, spiQ:0, spoA:0, spiA:0, voQ:0, viQ:0, voA:0, viA:0, salA:0, zero:0, low:0, ok:0};
+    const a = agg[g];
+    a.outlet++;
+    a.stock += stockAmt(r);
+    a.spoQ += r[IDX.spoQty]; a.spiQ += r[IDX.spiQty];
+    a.spoA += r[IDX.spoAmt]; a.spiA += r[IDX.spiAmt];
+    a.voQ += r[IDX.voQty]; a.viQ += r[IDX.viQty];
+    a.voA += r[IDX.voAmt]; a.viA += r[IDX.viAmt];
+    a.salA += r[IDX.salAmt];
+    const st = outletStatus(r[IDX.salAmt]);
+    a[st]++;
+  });
+  const rows = Object.keys(agg).map(g=>({name: ctx.names[g], ...agg[g]})).sort((a,b)=>b.stock-a.stock);
+
+  document.getElementById('summaryTbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td>${fmtN(r.outlet)}</td>
+      <td>${fmtBn(r.stock)}</td>
+      <td>${fmtN(r.spoQ)}</td>
+      <td>${fmtN(r.spiQ)}</td>
+      <td>${fmtBn(r.spoA)}</td>
+      <td>${fmtBn(r.spiA)}</td>
+      <td>${fmtN(r.voQ)}</td>
+      <td>${fmtN(r.viQ)}</td>
+      <td>${fmtBn(r.voA)}</td>
+      <td>${fmtBn(r.viA)}</td>
+      <td>${fmtBn(r.salA)}</td>
+      <td>${fmtN(r.zero)}</td>
+      <td>${fmtN(r.low)}</td>
+      <td>${fmtN(r.ok)}</td>
+    </tr>`).join('') || '<tr><td colspan="15" style="color:var(--muted);">Tidak ada data.</td></tr>';
+
+  const grand = rows.reduce((acc,r)=>{
+    acc.outlet+=r.outlet; acc.stock+=r.stock; acc.spoQ+=r.spoQ; acc.spiQ+=r.spiQ;
+    acc.spoA+=r.spoA; acc.spiA+=r.spiA; acc.voQ+=r.voQ; acc.viQ+=r.viQ;
+    acc.voA+=r.voA; acc.viA+=r.viA; acc.salA+=r.salA;
+    acc.zero+=r.zero; acc.low+=r.low; acc.ok+=r.ok;
+    return acc;
+  }, {outlet:0,stock:0,spoQ:0,spiQ:0,spoA:0,spiA:0,voQ:0,viQ:0,voA:0,viA:0,salA:0,zero:0,low:0,ok:0});
+  document.getElementById('summaryTfoot').innerHTML = rows.length ? `
+    <tr style="font-weight:700;background:#FAF9F7;">
+      <td>Total West Java</td>
+      <td>${fmtN(grand.outlet)}</td>
+      <td>${fmtBn(grand.stock)}</td>
+      <td>${fmtN(grand.spoQ)}</td>
+      <td>${fmtN(grand.spiQ)}</td>
+      <td>${fmtBn(grand.spoA)}</td>
+      <td>${fmtBn(grand.spiA)}</td>
+      <td>${fmtN(grand.voQ)}</td>
+      <td>${fmtN(grand.viQ)}</td>
+      <td>${fmtBn(grand.voA)}</td>
+      <td>${fmtBn(grand.viA)}</td>
+      <td>${fmtBn(grand.salA)}</td>
+      <td>${fmtN(grand.zero)}</td>
+      <td>${fmtN(grand.low)}</td>
+      <td>${fmtN(grand.ok)}</td>
+    </tr>` : '';
+}
+
+function exportSummaryTableCsv(){
+  const ctx = groupContext();
+  const agg = {};
+  filtered.forEach(r=>{
+    const g = r[ctx.key];
+    if(!agg[g]) agg[g] = {outlet:0, stock:0, spoQ:0, spiQ:0, spoA:0, spiA:0, voQ:0, viQ:0, voA:0, viA:0, salA:0, zero:0, low:0, ok:0};
+    const a = agg[g];
+    a.outlet++;
+    a.stock += stockAmt(r);
+    a.spoQ += r[IDX.spoQty]; a.spiQ += r[IDX.spiQty];
+    a.spoA += r[IDX.spoAmt]; a.spiA += r[IDX.spiAmt];
+    a.voQ += r[IDX.voQty]; a.viQ += r[IDX.viQty];
+    a.voA += r[IDX.voAmt]; a.viA += r[IDX.viAmt];
+    a.salA += r[IDX.salAmt];
+    const st = outletStatus(r[IDX.salAmt]);
+    a[st]++;
+  });
+  const rows = Object.keys(agg).map(g=>({name: ctx.names[g], ...agg[g]})).sort((a,b)=>b.stock-a.stock);
+
+  const headers = [ctx.label==='branch'?'Branch':'Micro Cluster','Outlet','Total Stock Amount',
+    'SP Qty Ori','SP Qty Inj','SP Amount Ori','SP Amount Inj','Voucher Qty Ori','Voucher Qty Inj',
+    'Voucher Amount Ori','Voucher Amount Inj','Salmo Amount','Saldo 0','<100K','>=100K'];
+  const lines = [headers.join(',')];
+  rows.forEach(r=>{
+    lines.push([r.name, r.outlet, Math.round(r.stock), r.spoQ, r.spiQ, Math.round(r.spoA), Math.round(r.spiA),
+      r.voQ, r.viQ, Math.round(r.voA), Math.round(r.viA), Math.round(r.salA), r.zero, r.low, r.ok].join(','));
+  });
+  const grand = rows.reduce((acc,r)=>{
+    acc.outlet+=r.outlet; acc.stock+=r.stock; acc.spoQ+=r.spoQ; acc.spiQ+=r.spiQ;
+    acc.spoA+=r.spoA; acc.spiA+=r.spiA; acc.voQ+=r.voQ; acc.viQ+=r.viQ;
+    acc.voA+=r.voA; acc.viA+=r.viA; acc.salA+=r.salA;
+    acc.zero+=r.zero; acc.low+=r.low; acc.ok+=r.ok;
+    return acc;
+  }, {outlet:0,stock:0,spoQ:0,spiQ:0,spoA:0,spiA:0,voQ:0,viQ:0,voA:0,viA:0,salA:0,zero:0,low:0,ok:0});
+  lines.push(['Total West Java', grand.outlet, Math.round(grand.stock), grand.spoQ, grand.spiQ, Math.round(grand.spoA),
+    Math.round(grand.spiA), grand.voQ, grand.viQ, Math.round(grand.voA), Math.round(grand.viA), Math.round(grand.salA),
+    grand.zero, grand.low, grand.ok].join(','));
+
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `summary_${ctx.label}_low_balance.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderTable(){
+  const tbody = document.getElementById('tbody');
+  document.getElementById('tableCount').textContent = `${fmtN(filtered.length)} outlet cocok dengan filter`;
+  const start = (page-1)*PAGE_SIZE;
+  const pageRows = filtered.slice(start, start+PAGE_SIZE);
+
+  tbody.innerHTML = pageRows.map(r=>{
+    const stock = stockAmt(r);
+    const dos = r[IDX.demandAmt]>0 ? (stock/r[IDX.demandAmt]).toFixed(2) : '–';
+    const status = outletStatus(r[IDX.salAmt]);
+    const statusLabel = status==='zero'?'Saldo 0':(status==='low'?'Low Balance':'≥ 100K');
+    return `<tr>
+      <td>${META.brands[r[IDX.brandIdx]]}</td>
+      <td>${META.branches[r[IDX.branchIdx]]}</td>
+      <td>${META.micros[r[IDX.microIdx]]}</td>
+      <td>${r[IDX.outletId]}</td>
+      <td class="name-cell">${r[IDX.outletName]||'-'}</td>
+      <td><span class="badge ${catName(r[IDX.catIdx])}">${catName(r[IDX.catIdx])}</span></td>
+      <td>${fmtN(r[IDX.spoQty])}</td>
+      <td>${fmtN(r[IDX.spoAmt])}</td>
+      <td>${fmtN(r[IDX.spiQty])}</td>
+      <td>${fmtN(r[IDX.spiAmt])}</td>
+      <td>${fmtN(r[IDX.voQty])}</td>
+      <td>${fmtN(r[IDX.voAmt])}</td>
+      <td>${fmtN(r[IDX.viQty])}</td>
+      <td>${fmtN(r[IDX.viAmt])}</td>
+      <td>${fmtN(r[IDX.salAmt])}</td>
+      <td>${fmtN(r[IDX.demandAmt])}</td>
+      <td>${dos}</td>
+      <td><span class="badge ${status}">${statusLabel}</span></td>
+    </tr>`;
+  }).join('');
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  document.getElementById('pageInfo').textContent = `Halaman ${page} / ${totalPages}`;
+  document.getElementById('prevPage').disabled = page<=1;
+  document.getElementById('nextPage').disabled = page>=totalPages;
+}
+
+// ---------- CSV export ----------
+function exportCsv(){
+  const headers = ['brand','area','branch','micro_cluster','outlet_id','outlet_name','kategori',
+    'sp_ori_qty','sp_ori_amt','sp_inj_qty','sp_inj_amt','vou_ori_qty','vou_ori_amt','vou_inj_qty','vou_inj_amt',
+    'salmo_amt','demand_30_amt','dos','status_saldo'];
+  const lines = [headers.join(',')];
+  filtered.forEach(r=>{
+    const stock = stockAmt(r);
+    const dos = r[IDX.demandAmt]>0 ? (stock/r[IDX.demandAmt]).toFixed(2) : '';
+    const status = outletStatus(r[IDX.salAmt]);
+    const row = [
+      META.brands[r[IDX.brandIdx]], META.areas[r[IDX.areaIdx]], META.branches[r[IDX.branchIdx]], META.micros[r[IDX.microIdx]],
+      r[IDX.outletId], JSON.stringify(r[IDX.outletName]||''), catName(r[IDX.catIdx]),
+      r[IDX.spoQty], r[IDX.spoAmt], r[IDX.spiQty], r[IDX.spiAmt], r[IDX.voQty], r[IDX.voAmt], r[IDX.viQty], r[IDX.viAmt],
+      r[IDX.salAmt], r[IDX.demandAmt], dos, status
+    ];
+    lines.push(row.join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `detail_outlet_${(document.getElementById('fBranch').value||'semua_branch').replace(/\s+/g,'_')}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// combined report: joins stock (Low Balance) + Sell In & GA per outlet into one row,
+// so the person doesn't have to cross-reference two separate CSV exports by hand
+function exportCombinedCsv(){
+  const sellinIdx = new Map();
+  filteredSellin.forEach(r=>sellinIdx.set(META.brands[r[IDX_S.brandIdx]]+'|'+r[IDX_S.outletId], r));
+
+  const headers = [
+    'brand','area','branch','micro_cluster','outlet_id','outlet_name','kategori',
+    // stock / low balance
+    'sp_ori_qty','sp_ori_amt','sp_inj_qty','sp_inj_amt','vou_ori_qty','vou_ori_amt','vou_inj_qty','vou_inj_amt',
+    'salmo_amt','demand_30_amt','dos','status_saldo',
+    // GA + sell in
+    'ga_mtd','sellin_sp','sellin_voucher','sellin_saldo','tertiary','secondary','status_sellin'
+  ];
+  const lines = [headers.join(',')];
+
+  filtered.forEach(r=>{
+    const stock = stockAmt(r);
+    const dos = r[IDX.demandAmt]>0 ? (stock/r[IDX.demandAmt]).toFixed(2) : '';
+    const statusSaldo = outletStatus(r[IDX.salAmt]);
+    const key = META.brands[r[IDX.brandIdx]]+'|'+r[IDX.outletId];
+    const s = sellinIdx.get(key);
+    const statusSellin = s ? sellinStatusFlags(s).join('; ') : '-';
+
+    const row = [
+      META.brands[r[IDX.brandIdx]], META.areas[r[IDX.areaIdx]], META.branches[r[IDX.branchIdx]], META.micros[r[IDX.microIdx]],
+      r[IDX.outletId], JSON.stringify(r[IDX.outletName]||''), catName(r[IDX.catIdx]),
+      r[IDX.spoQty], r[IDX.spoAmt], r[IDX.spiQty], r[IDX.spiAmt], r[IDX.voQty], r[IDX.voAmt], r[IDX.viQty], r[IDX.viAmt],
+      r[IDX.salAmt], r[IDX.demandAmt], dos, statusSaldo,
+      s ? s[IDX_S.rguGa] : '', s ? s[IDX_S.sellinSp] : '', s ? s[IDX_S.sellinVou] : '', s ? s[IDX_S.sellinSaldo] : '',
+      s ? s[IDX_S.tertiary] : '', s ? s[IDX_S.secondary] : '', JSON.stringify(statusSellin)
+    ];
+    lines.push(row.join(','));
+  });
+
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_gabungan_outlet_${(document.getElementById('fBranch').value||'semua_branch').replace(/\s+/g,'_')}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderCombinedTable(){
+  const tbody = document.getElementById('combinedTbody');
+  if(!tbody) return;
+  const sellinIdx = new Map();
+  filteredSellin.forEach(r=>sellinIdx.set(META.brands[r[IDX_S.brandIdx]]+'|'+r[IDX_S.outletId], r));
+
+  document.getElementById('combinedTableCount').textContent = `${fmtN(filtered.length)} outlet cocok dengan filter`;
+  const start = (combinedPage-1)*PAGE_SIZE;
+  const pageRows = filtered.slice(start, start+PAGE_SIZE);
+
+  tbody.innerHTML = pageRows.map(r=>{
+    const stock = stockAmt(r);
+    const dos = r[IDX.demandAmt]>0 ? (stock/r[IDX.demandAmt]).toFixed(2) : '–';
+    const statusSaldo = outletStatus(r[IDX.salAmt]);
+    const statusLabel = statusSaldo==='zero'?'Saldo 0':(statusSaldo==='low'?'Low Balance':'≥ 100K');
+    const key = META.brands[r[IDX.brandIdx]]+'|'+r[IDX.outletId];
+    const s = sellinIdx.get(key);
+    const sellinFlags = s ? sellinStatusFlags(s) : ['–'];
+    const sellinHtml = s ? sellinFlags.map(f=>`<span class="badge ${f==='Sell In Lengkap'?'ok':'low'}" style="margin-right:3px;">${f}</span>`).join('') : '<span style="color:var(--muted);">–</span>';
+    return `<tr>
+      <td>${META.brands[r[IDX.brandIdx]]}</td>
+      <td>${META.branches[r[IDX.branchIdx]]}</td>
+      <td>${META.micros[r[IDX.microIdx]]}</td>
+      <td>${r[IDX.outletId]}</td>
+      <td class="name-cell">${r[IDX.outletName]||'-'}</td>
+      <td><span class="badge ${catName(r[IDX.catIdx])}">${catName(r[IDX.catIdx])}</span></td>
+      <td>${fmtN(r[IDX.spoAmt])}</td>
+      <td>${fmtN(r[IDX.spiAmt])}</td>
+      <td>${fmtN(r[IDX.voAmt])}</td>
+      <td>${fmtN(r[IDX.viAmt])}</td>
+      <td>${fmtN(r[IDX.salAmt])}</td>
+      <td>${fmtN(r[IDX.demandAmt])}</td>
+      <td>${dos}</td>
+      <td><span class="badge ${statusSaldo}">${statusLabel}</span></td>
+      <td>${s ? fmtN(s[IDX_S.rguGa]) : '–'}</td>
+      <td>${s ? fmtN(s[IDX_S.sellinSp]) : '–'}</td>
+      <td>${s ? fmtN(s[IDX_S.sellinVou]) : '–'}</td>
+      <td>${s ? fmtN(s[IDX_S.sellinSaldo]) : '–'}</td>
+      <td>${s ? fmtN(s[IDX_S.tertiary]) : '–'}</td>
+      <td>${s ? fmtN(s[IDX_S.secondary]) : '–'}</td>
+      <td style="white-space:normal;">${sellinHtml}</td>
+    </tr>`;
+  }).join('');
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  document.getElementById('combinedPageInfo').textContent = `Halaman ${combinedPage} / ${totalPages}`;
+  document.getElementById('combinedPrevPage').disabled = combinedPage<=1;
+  document.getElementById('combinedNextPage').disabled = combinedPage>=totalPages;
+}
+
+// ---------- update: stock CSV ----------
+function normId(x){
+  x = String(x).trim();
+  return /^[0-9]+$/.test(x) ? String(parseInt(x,10)) : x.toUpperCase();
+}
+
+function handleStockFile(file){
+  const progressEl = document.getElementById('stockProgress');
+  progressEl.textContent = 'Memproses 0 baris…';
+  const data = {};
+  let rowCount = 0;
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    worker: true,
+    step: function(res){
+      rowCount++;
+      const row = res.data;
+      const brand = row.brand, oid = normId(row.outlet_id);
+      const key = brand+'|'+oid;
+      const d = row.as_of_date, pos = row.flag_position, flag = row.flag;
+      const qty = parseFloat(row.qty)||0, amt = parseFloat(row.amt)||0;
+
+      let entry = data[key];
+      if(!entry){
+        entry = {maxDate:d, agg:{}};
+        data[key] = entry;
+      } else if(d > entry.maxDate){
+        entry.maxDate = d;
+      }
+      const dag = entry.agg[d] || (entry.agg[d]={});
+      const k2 = pos+'|'+flag;
+      if(dag[k2]) { dag[k2][0]+=qty; dag[k2][1]+=amt; } else { dag[k2] = [qty, amt]; }
+
+      if(rowCount % 100000 === 0) progressEl.textContent = `Memproses ${rowCount.toLocaleString('id-ID')} baris…`;
+    },
+    complete: function(){
+      progressEl.textContent = `Menggabungkan ${rowCount.toLocaleString('id-ID')} baris ke ${Object.keys(MASTER).length.toLocaleString('id-ID')} outlet pairing…`;
+      setTimeout(()=>finishStockProcessing(data, progressEl), 30);
+    },
+    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; }
+  });
+}
+
+async function finishStockProcessing(data, progressEl){
+  const masterKeys = Object.keys(MASTER);
+  const brandsSet = new Set(), areasSet = new Set(), branchesSet = new Set(), microsSet = new Set();
+  masterKeys.forEach(k=>{
+    const mm = MASTER[k];
+    brandsSet.add(k.split('|')[0]); areasSet.add(mm.area); branchesSet.add(mm.branch); microsSet.add(mm.micro);
+  });
+  const brands = Array.from(brandsSet).sort();
+  const areas = Array.from(areasSet).sort();
+  const branches = Array.from(branchesSet).sort();
+  const micros = Array.from(microsSet).sort();
+  const cats = ['KAM','KRO','PJP'];
+  const bI = Object.fromEntries(brands.map((v,i)=>[v,i]));
+  const aI = Object.fromEntries(areas.map((v,i)=>[v,i]));
+  const brI = Object.fromEntries(branches.map((v,i)=>[v,i]));
+  const mI = Object.fromEntries(micros.map((v,i)=>[v,i]));
+
+  const outlets = [];
+  let maxAsOf = null;
+  masterKeys.forEach(key=>{
+    const [brand, oid] = key.split('|');
+    const mm = MASTER[key];
+    const e = data[key];
+    let spoQ=0,spoA=0,spiQ=0,spiA=0,voQ=0,voA=0,viQ=0,viA=0,salQ=0,salA=0,demA=0;
+    if(e){
+      if(!maxAsOf || e.maxDate > maxAsOf) maxAsOf = e.maxDate;
+      const dag = e.agg[e.maxDate] || {};
+      Object.keys(dag).forEach(k2=>{
+        const [pos, flag] = k2.split('|');
+        const [qty, amt] = dag[k2];
+        if(pos==='stock_outlet'){
+          if(flag==='sp_ori'){ spoQ+=qty; spoA+=amt; }
+          else if(flag==='sp_inj'){ spiQ+=qty; spiA+=amt; }
+          else if(flag==='vou_ori'){ voQ+=qty; voA+=amt; }
+          else if(flag==='vou_inj'){ viQ+=qty; viA+=amt; }
+          else if(flag==='salmo'){ salQ+=qty; salA+=amt; }
+          // sp_0 / vou_0 ignored intentionally
+        } else if(pos==='demand_30'){
+          demA += amt;
+        }
+      });
+    }
+    const cat = mm.cat;
+
+    outlets.push([
+      bI[brand], aI[mm.area], brI[mm.branch], mI[mm.micro], oid, mm.name||'', cats.indexOf(cat),
+      Math.round(spoQ), Math.round(spoA), Math.round(spiQ), Math.round(spiA),
+      Math.round(voQ), Math.round(voA), Math.round(viQ), Math.round(viA),
+      Math.round(salQ), Math.round(salA), Math.round(demA)
+    ]);
+  });
+
+  const branchByArea = {}; areas.forEach(a=>branchByArea[a]=new Set());
+  const microByBranch = {}; branches.forEach(b=>microByBranch[b]=new Set());
+  masterKeys.forEach(key=>{
+    const mm = MASTER[key];
+    branchByArea[mm.area].add(mm.branch);
+    microByBranch[mm.branch].add(mm.micro);
+  });
+  Object.keys(branchByArea).forEach(a=>branchByArea[a]=Array.from(branchByArea[a]).sort());
+  Object.keys(microByBranch).forEach(b=>microByBranch[b]=Array.from(microByBranch[b]).sort());
+
+  const brandCounts = {}; brands.forEach(b=>brandCounts[b]=0);
+  outlets.forEach(row=>{ brandCounts[brands[row[IDX.brandIdx]]]++; });
+
+  META = {
+    brands, areas, branches, micros, cats, branchByArea, microByBranch, brandCounts,
+    asOf: maxAsOf, totalOutlets: outlets.length,
+    masterUpdated: META.masterUpdated || null,
+    lastUpdated: new Date().toISOString(),
+    fields_outlet: FIELDS_O,
+  };
+  OUTLETS = outlets;
+
+  progressEl.textContent = `Menyimpan data online (${outlets.length.toLocaleString('id-ID')} outlet)…`;
+  await persistAll();
+  progressEl.textContent = `Selesai. ${outlets.length.toLocaleString('id-ID')} outlet diperbarui, per ${maxAsOf||'-'}.`;
+
+  refreshHeaderMeta();
+  populateAreaBranch();
+  applyFilters();
+}
+
+// ---------- update: master xlsx ----------
+function handleMasterFile(file){
+  const progressEl = document.getElementById('masterProgress');
+  progressEl.textContent = 'Membaca file Excel…';
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const newMaster = {};
+      function extract(sheetName, headerRow, brand){
+        const ws = wb.Sheets[sheetName];
+        if(!ws) return 0;
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, range: headerRow});
+        let n=0;
+        rows.forEach(r=>{
+          const outletCode = r[20];
+          if(outletCode===undefined || outletCode===null || outletCode==='') return;
+          const pjp = r[22];
+          const flag = r[24];
+          const flagKam = r[25];
+          const isKam = flagKam === 'KAM';
+          if(pjp !== 'YES' && !isKam) return; // keep: active PJP outlets, plus KAM outlets regardless of PJP status
+          const area = r[3] || 'TANPA AREA';
+          const branch = r[6] || 'TANPA BRANCH';
+          const micro = r[13] || 'TANPA MICRO CLUSTER';
+          const outletName = r[21];
+          const cat = isKam ? 'KAM' : (flag==='KRO' ? 'KRO' : 'PJP');
+          const oid = normId(outletCode);
+          newMaster[brand+'|'+oid] = {area, branch, micro, name: outletName || '', cat};
+          n++;
+        });
+        return n;
+      }
+      const n1 = extract('IM3', 2, 'IM3');
+      const n2 = extract('3ID', 3, '3ID');
+
+      const oldStockByKey = {};
+      OUTLETS.forEach(row=>{
+        const brand = META.brands[row[IDX.brandIdx]];
+        const key = brand+'|'+row[IDX.outletId];
+        oldStockByKey[key] = row;
+      });
+
+      MASTER = newMaster;
+      META.masterUpdated = new Date().toISOString();
+
+      const masterKeys = Object.keys(MASTER);
+      const brandsSet = new Set(), areasSet = new Set(), branchesSet = new Set(), microsSet = new Set();
+      masterKeys.forEach(k=>{
+        const mm = MASTER[k];
+        brandsSet.add(k.split('|')[0]); areasSet.add(mm.area); branchesSet.add(mm.branch); microsSet.add(mm.micro);
+      });
+      const brands = Array.from(brandsSet).sort();
+      const areas = Array.from(areasSet).sort();
+      const branches = Array.from(branchesSet).sort();
+      const micros = Array.from(microsSet).sort();
+      const cats = ['KAM','KRO','PJP'];
+      const bI = Object.fromEntries(brands.map((v,i)=>[v,i]));
+      const aI = Object.fromEntries(areas.map((v,i)=>[v,i]));
+      const brI = Object.fromEntries(branches.map((v,i)=>[v,i]));
+      const mI = Object.fromEntries(micros.map((v,i)=>[v,i]));
+
+      const newOutlets = masterKeys.map(key=>{
+        const [brand, oid] = key.split('|');
+        const mm = MASTER[key];
+        const old = oldStockByKey[key];
+        const cat = mm.cat;
+        return [
+          bI[brand], aI[mm.area], brI[mm.branch], mI[mm.micro], oid, mm.name||'', cats.indexOf(cat),
+          old ? old[IDX.spoQty] : 0, old ? old[IDX.spoAmt] : 0,
+          old ? old[IDX.spiQty] : 0, old ? old[IDX.spiAmt] : 0,
+          old ? old[IDX.voQty] : 0, old ? old[IDX.voAmt] : 0,
+          old ? old[IDX.viQty] : 0, old ? old[IDX.viAmt] : 0,
+          old ? old[IDX.salQty] : 0, old ? old[IDX.salAmt] : 0,
+          old ? old[IDX.demandAmt] : 0
+        ];
+      });
+
+      const branchByArea = {}; areas.forEach(a=>branchByArea[a]=new Set());
+      const microByBranch = {}; branches.forEach(b=>microByBranch[b]=new Set());
+      masterKeys.forEach(key=>{
+        const mm = MASTER[key];
+        branchByArea[mm.area].add(mm.branch);
+        microByBranch[mm.branch].add(mm.micro);
+      });
+      Object.keys(branchByArea).forEach(a=>branchByArea[a]=Array.from(branchByArea[a]).sort());
+      Object.keys(microByBranch).forEach(b=>microByBranch[b]=Array.from(microByBranch[b]).sort());
+      const brandCounts = {}; brands.forEach(b=>brandCounts[b]=0);
+      newOutlets.forEach(row=>{ brandCounts[brands[row[0]]]++; });
+
+      META = {
+        brands, areas, branches, micros, cats, branchByArea, microByBranch, brandCounts,
+        asOf: META.asOf, totalOutlets: newOutlets.length,
+        masterUpdated: META.masterUpdated, lastUpdated: new Date().toISOString(),
+        fields_outlet: FIELDS_O,
+      };
+      OUTLETS = newOutlets;
+
+      // reconcile Sell In & GA rows to the new master universe too, carrying forward
+      // previous values for outlets that still exist
+      const oldSellinByKey = {};
+      SELLIN_OUTLETS.forEach(row=>{
+        const b = META.brands[row[IDX_S.brandIdx]];
+        oldSellinByKey[b+'|'+row[IDX_S.outletId]] = row;
+      });
+      SELLIN_OUTLETS = masterKeys.map(key=>{
+        const [b, oid] = key.split('|');
+        const mm = MASTER[key];
+        const old = oldSellinByKey[key];
+        return [
+          bI[b], aI[mm.area], brI[mm.branch], mI[mm.micro], oid, mm.name||'', cats.indexOf(mm.cat),
+          old ? old[IDX_S.rguGa] : 0, old ? old[IDX_S.qsso] : 0, old ? old[IDX_S.sellinSp] : 0,
+          old ? old[IDX_S.sellinVou] : 0, old ? old[IDX_S.sellinSaldo] : 0,
+          old ? old[IDX_S.tertiary] : 0, old ? old[IDX_S.secondary] : 0
+        ];
+      });
+      if(SMETA) SMETA = {...SMETA, totalOutlets: SELLIN_OUTLETS.length};
+
+      progressEl.textContent = `Menyimpan pairing online (${n1+n2} baris, IM3: ${n1}, 3ID: ${n2})…`;
+      await persistAll();
+      if(SMETA) await persistSellin();
+      progressEl.textContent = `Selesai. Total ${newOutlets.length.toLocaleString('id-ID')} outlet (IM3: ${n1}, 3ID: ${n2}). Angka stok/sell-in memakai data terakhir; upload ulang file stok/sell-in bila perlu menyegarkan.`;
+      refreshHeaderMeta();
+      populateAreaBranch();
+      applyFilters();
+    }catch(err){
+      progressEl.textContent = 'Gagal memproses file: ' + err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ---------- update: Sell In & GA CSV (DSE_PROD) ----------
+const IM3_SI_COLS = {region:'region', branch:'branch', micro:'micro_cluster', id_outlet:'id_outlet', rgu_ga:'rgu_ga', qsso:'qsso', sp:'sellin_sp', vou:'sellin_vou', saldo:'sellin_saldo', tertiary:'tertiary', secondary:'secondary'};
+const TID_SI_COLS = {region:'region', branch:'branch', micro:'mc_ts', id_outlet:'id_outlet', rgu_ga:'rgu_ga', qsso:'qsso', sp:'osa_sp', vou:'osa_vou', saldo:'osa_saldo', tertiary:'tertiary', secondary:'secondary'};
+
+function handleSellinFile(file){
+  const progressEl = document.getElementById('sellinProgress');
+  progressEl.textContent = 'Membaca header file…';
+
+  Papa.parse(file, {
+    header: true,
+    delimiter: ';',
+    preview: 1,
+    complete: function(headRes){
+      const cols = headRes.meta.fields || [];
+      let brand = null, colMap = null;
+      if(cols.includes('mc_ts')){ brand = '3ID'; colMap = TID_SI_COLS; }
+      else if(cols.includes('micro_cluster')){ brand = 'IM3'; colMap = IM3_SI_COLS; }
+      if(!brand){ progressEl.textContent = 'Format file tidak dikenali (bukan DSE_PROD IM3/3ID).'; return; }
+      parseSellinBody(file, brand, colMap, progressEl);
+    },
+    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; }
+  });
+}
+
+function parseSellinBody(file, brand, colMap, progressEl){
+  const byKey = {};
+  let rowCount = 0, matched = 0;
+
+  Papa.parse(file, {
+    header: true,
+    delimiter: ';',
+    skipEmptyLines: true,
+    worker: true,
+    step: function(res){
+      rowCount++;
+      const row = res.data;
+      if(row[colMap.region] !== 'WEST JAVA') return;
+      const oid = normId(row[colMap.id_outlet]);
+      const key = brand+'|'+oid;
+      const mm = MASTER[key];
+      if(!mm) return; // only outlets in the current pairing universe
+      matched++;
+      byKey[key] = {
+        rguGa: parseFloat(row[colMap.rgu_ga])||0, qsso: parseFloat(row[colMap.qsso])||0,
+        sp: parseFloat(row[colMap.sp])||0, vou: parseFloat(row[colMap.vou])||0, saldo: parseFloat(row[colMap.saldo])||0,
+        tertiary: parseFloat(row[colMap.tertiary])||0, secondary: parseFloat(row[colMap.secondary])||0,
+      };
+      if(rowCount % 50000 === 0) progressEl.textContent = `Memproses ${rowCount.toLocaleString('id-ID')} baris (${brand})…`;
+    },
+    complete: function(){
+      progressEl.textContent = `Menggabungkan data Sell In & GA ${brand} (${matched.toLocaleString('id-ID')} outlet cocok)…`;
+      setTimeout(()=>finishSellinProcessing(brand, byKey, progressEl), 30);
+    },
+    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; }
+  });
+}
+
+async function finishSellinProcessing(brand, byKey, progressEl){
+  const brandI = META.brands.indexOf(brand);
+  // keep existing rows for the OTHER brand untouched; rebuild rows for this brand from MASTER + new sellin data
+  const keptOther = SELLIN_OUTLETS.filter(r=>r[IDX_S.brandIdx]!==brandI);
+  const rebuilt = [];
+  Object.keys(MASTER).forEach(key=>{
+    if(!key.startsWith(brand+'|')) return;
+    const mm = MASTER[key];
+    const oid = key.split('|')[1];
+    const s = byKey[key];
+    rebuilt.push([
+      brandI, META.areas.indexOf(mm.area), META.branches.indexOf(mm.branch), META.micros.indexOf(mm.micro),
+      oid, mm.name||'', META.cats.indexOf(mm.cat),
+      s? Math.round(s.rguGa*100)/100 : 0, s? Math.round(s.qsso*100)/100 : 0,
+      s? Math.round(s.sp) : 0, s? Math.round(s.vou) : 0, s? Math.round(s.saldo) : 0,
+      s? Math.round(s.tertiary) : 0, s? Math.round(s.secondary) : 0
+    ]);
+  });
+  SELLIN_OUTLETS = keptOther.concat(rebuilt);
+  SMETA = { fields_sellin: FIELDS_S, asOf: SMETA.asOf, mth: SMETA.mth, totalOutlets: SELLIN_OUTLETS.length, lastUpdated: new Date().toISOString() };
+
+  progressEl.textContent = `Menyimpan data Sell In & GA online (${SELLIN_OUTLETS.length.toLocaleString('id-ID')} outlet)…`;
+  await persistSellin();
+  progressEl.textContent = `Selesai. Data Sell In & GA ${brand} diperbarui (${rebuilt.length.toLocaleString('id-ID')} outlet).`;
+  applyFilters();
+}
+
+// ---------- misc UI ----------
+function refreshHeaderMeta(){
+  document.getElementById('metaAsOf').textContent = META.asOf || '–';
+  document.getElementById('metaMasterDate').textContent = META.masterUpdated ? new Date(META.masterUpdated).toLocaleDateString('id-ID') : '–';
+  document.getElementById('metaUpdated').textContent = META.lastUpdated ? new Date(META.lastUpdated).toLocaleString('id-ID') : '–';
+}
+
+// ---------- Peta & Ringkasan tab ----------
+function renderPetaAll(){
+  renderPetaStatList();
+  initMapOnce();
+  renderMapPoints();
+  renderCombinedTable();
+}
+
+function statRow(lbl, val, cls){
+  return `<div class="stat-row"><span class="lbl">${lbl}</span><span class="val${cls?(' '+cls):''}">${val}</span></div>`;
+}
+
+function renderPetaStatList(){
+  const brandI = document.getElementById('fBrand').value ? META.brands.indexOf(document.getElementById('fBrand').value) : -1;
+  const areaSel = document.getElementById('fArea').value;
+  const branchSel = document.getElementById('fBranch').value;
+  const microSel = document.getElementById('fMicro').value;
+  const branchI = branchSel ? META.branches.indexOf(branchSel) : -1;
+  const microI = microSel ? META.micros.indexOf(microSel) : -1;
+  const areaI = areaSel ? META.areas.indexOf(areaSel) : -1;
+  const catI = activeCat ? META.cats.indexOf(activeCat) : -1;
+
+  const branchesInView = branchI>=0 ? [branchSel] : (areaSel ? (META.branchByArea[areaSel]||[]) : META.branches);
+  const microSet = new Set();
+  filtered.forEach(r=>microSet.add(r[IDX.microIdx]));
+
+  let stockTotal=0, low=0, zero=0;
+  filtered.forEach(r=>{
+    stockTotal += stockAmt(r);
+    const st = outletStatus(r[IDX.salAmt]);
+    if(st==='zero') zero++; else if(st==='low') low++;
+  });
+  const lowTotal = low+zero;
+
+  let ga=0, sellinTotal=0;
+  filteredSellin.forEach(r=>{ ga += r[IDX_S.rguGa]; sellinTotal += r[IDX_S.sellinSp]+r[IDX_S.sellinVou]+r[IDX_S.sellinSaldo]; });
+
+  let redCount=0, noStockCount=0, geoN=0;
+  GEO_POINTS.forEach(p=>{
+    if(brandI>=0 && p[GIDX.brandIdx]!==brandI) return;
+    if(branchI>=0 && p[GIDX.branchIdx]!==branchI) return;
+    if(microI>=0 && p[GIDX.microIdx]!==microI) return;
+    if(areaI>=0 && !(META.branchByArea[areaSel]||[]).includes(META.branches[p[GIDX.branchIdx]])) return;
+    if(catI>=0 && p[GIDX.catIdx]!==catI) return;
+    geoN++;
+    if(p[GIDX.red]) redCount++;
+    if(p[GIDX.noStock]) noStockCount++;
+  });
+
+  const n = filtered.length;
+  document.getElementById('petaStatList').innerHTML = [
+    statRow('Total Outlet (sesuai filter)', fmtN(n)),
+    statRow('Jumlah Branch tercakup', fmtN(branchesInView.length)),
+    statRow('Jumlah Micro Cluster tercakup', fmtN(microSet.size)),
+    statRow('Total Stock Amount (Bn)', fmtBn(stockTotal)),
+    statRow('Total GA (MTD)', fmtN(ga)),
+    statRow('Total Sell In Amount (Bn)', fmtBn(sellinTotal)),
+    statRow('Low Balance Salmo (&lt;100K)', fmtN(lowTotal) + (n? ' · '+(lowTotal/n*100).toFixed(1)+'%':''), 'red'),
+    statRow('Outlet Tanpa Stock Sama Sekali', fmtN(noStockCount) + (geoN? ' · '+(noStockCount/geoN*100).toFixed(1)+'%':''), 'red'),
+    statRow('Outlet Bermasalah di Peta (No GA / No Sell In SP / No Sell In Saldo / No Stock)', fmtN(redCount) + (geoN? ' · '+(redCount/geoN*100).toFixed(1)+'%':''), 'red'),
+  ].join('');
+}
+
+// KABKOT (geojson) names don't always match BRANCH names 1:1 — this mapping is derived
+// empirically from the actual outlet population data (each outlet's Kecamatan → Kabupaten
+// via the GeoJSON, cross-tabbed against that outlet's real Branch assignment), not guessed
+// from name similarity.
+const KABKOT_TO_BRANCH = {
+  'BANDUNG':'KAB BANDUNG',
+  'BANDUNG BARAT':'KOTA BANDUNG',
+  'CIAMIS':'CIAMIS',
+  'CIREBON':'CIREBON',
+  'GARUT':'GARUT',
+  'INDRAMAYU':'CIREBON',
+  'KOTA BANDUNG':'KOTA BANDUNG',
+  'KOTA BANJAR':'CIAMIS',
+  'KOTA CIMAHI':'KOTA BANDUNG',
+  'KOTA CIREBON':'CIREBON',
+  'KOTA TASIKMALAYA':'TASIKMALAYA',
+  'KUNINGAN':'KUNINGAN',
+  'MAJALENGKA':'KUNINGAN',
+  'PANGANDARAN':'CIAMIS',
+  'PURWAKARTA':'PURWAKARTA',
+  'SUBANG':'PURWAKARTA',
+  'SUMEDANG':'KUNINGAN',
+  'TASIKMALAYA':'TASIKMALAYA',
+};
+
+function initMapOnce(){
+  if(mapInstance) return;
+  if(typeof L === 'undefined'){ console.error('Leaflet failed to load'); return; }
+  try{
+    mapInstance = L.map('mapContainer', {preferCanvas:true}).setView([-6.95, 107.6], 9);
+
+    // CyclOSM: OSM-based data, served via OpenStreetMap France's infrastructure.
+    // Free, no API key. Note: like OSM's own tile servers, this is volunteer-run —
+    // if it ever throttles/blocks this app the same way tile.openstreetmap.org did,
+    // automatically fall back to Esri's Light Gray Canvas (no API key, no known
+    // blocking issues) instead of leaving the map blank.
+    const cyclLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+      maxZoom: 16, attribution: '&copy; OpenStreetMap contributors, CyclOSM'
+    });
+    let cyclErrorCount = 0, esriFallbackActive = false;
+    cyclLayer.on('tileerror', () => {
+      cyclErrorCount++;
+      if(cyclErrorCount >= 6 && !esriFallbackActive){
+        esriFallbackActive = true;
+        mapInstance.removeLayer(cyclLayer);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 16, attribution: '&copy; Esri'
+        }).addTo(mapInstance);
+        showToast('Sumber peta CyclOSM bermasalah — beralih ke peta cadangan.');
+      }
+    });
+    cyclLayer.addTo(mapInstance);
+
+    if(KAB_GEOJSON){
+      kabLayer = L.geoJSON(KAB_GEOJSON, {
+        style: (feature) => {
+          const kab = feature.properties && feature.properties.KABKOT;
+          const branchMatch = kab && KABKOT_TO_BRANCH[kab];
+          const col = branchMatch ? branchColor(branchMatch) : '#8C899A';
+          return { color: col, weight: 1.5, fillColor: col, fillOpacity: 0.28 };
+        },
+        onEachFeature: (feature, layer) => {
+          const kab = feature.properties && feature.properties.KABKOT;
+          const branchMatch = kab && KABKOT_TO_BRANCH[kab];
+          if(kab) layer.bindTooltip(kab + (branchMatch ? ` (Branch ${branchMatch})` : ''), {sticky:true});
+          layer.on('mouseover', ()=>layer.setStyle({fillOpacity:0.5}));
+          layer.on('mouseout', ()=>restyleKabLayer());
+          layer.on('click', ()=>{
+            mapInstance.fitBounds(layer.getBounds(), {maxZoom:11});
+            if(branchMatch){
+              document.getElementById('fBranch').value = branchMatch;
+              refreshMicroOptions();
+              applyFilters();
+              showToast(`Drill-down ke Branch ${branchMatch}`);
+            } else {
+              showToast(`${kab}: belum terpetakan ke satu Branch tertentu — hanya memperbesar peta.`);
+            }
+          });
+        }
+      }).addTo(mapInstance);
+      renderKabLegend();
+    }
+    mapMarkerLayer = L.layerGroup().addTo(mapInstance);
+  }catch(e){
+    console.error('Gagal memuat peta', e);
+  }
+}
+
+const BRANCH_COLOR_PALETTE = ['#C81E3A','#2A6FB0','#1B8A5A','#B8790A','#7A2E8C','#0E7C86','#A34E1E','#4A5FC1'];
+function branchColor(branchName){
+  const idx = META.branches.indexOf(branchName);
+  return BRANCH_COLOR_PALETTE[idx % BRANCH_COLOR_PALETTE.length] || '#8C899A';
+}
+function renderKabLegend(){
+  const el = document.getElementById('kabLegend');
+  if(!el) return;
+  el.innerHTML = META.branches.map(b=>
+    `<span><i class="dot" style="background:${branchColor(b)};border-radius:2px;"></i>${b}</span>`
+  ).join('');
+}
+
+function restyleKabLayer(){
+  if(!kabLayer) return;
+  const areaSel = document.getElementById('fArea').value;
+  const branchSel = document.getElementById('fBranch').value;
+  const areaBranches = areaSel ? new Set(META.branchByArea[areaSel]||[]) : null;
+  kabLayer.eachLayer(layer=>{
+    const kab = layer.feature.properties && layer.feature.properties.KABKOT;
+    const branchMatch = kab && KABKOT_TO_BRANCH[kab];
+    let matches = true;
+    if(branchSel) matches = (branchMatch === branchSel);
+    else if(areaBranches) matches = branchMatch && areaBranches.has(branchMatch);
+    const col = branchMatch ? branchColor(branchMatch) : '#8C899A';
+    layer.setStyle(matches
+      ? { color: col, weight: 1.5, fillColor: col, fillOpacity: 0.28 }
+      : { color: '#C7C4BD', weight: 1, fillColor: '#C7C4BD', fillOpacity: 0.03 }
+    );
+  });
+}
+
+function renderMapPoints(){
+  if(!mapInstance || !mapMarkerLayer || typeof L === 'undefined') return;
+  try{
+  restyleKabLayer();
+  mapMarkerLayer.clearLayers();
+
+  const brand = document.getElementById('fBrand').value;
+  const areaSel = document.getElementById('fArea').value;
+  const branch = document.getElementById('fBranch').value;
+  const microSel = document.getElementById('fMicro').value;
+  const search = document.getElementById('fSearch').value.trim().toLowerCase();
+  const brandI = brand ? META.brands.indexOf(brand) : -1;
+  const branchI = branch ? META.branches.indexOf(branch) : -1;
+  const microI = microSel ? META.micros.indexOf(microSel) : -1;
+  const areaBranches = areaSel ? new Set(META.branchByArea[areaSel]||[]) : null;
+  const catI = activeCat ? META.cats.indexOf(activeCat) : -1;
+
+  const searchTokens = search ? search.split(/\s+/).filter(Boolean) : [];
+
+  let shown = 0;
+  const shownLatLngs = [];
+  const outletIdx = new Map();
+  OUTLETS.forEach(r=>outletIdx.set(META.brands[r[IDX.brandIdx]]+'|'+r[IDX.outletId], r));
+  const sellinIdx = new Map();
+  SELLIN_OUTLETS.forEach(r=>sellinIdx.set(META.brands[r[IDX_S.brandIdx]]+'|'+r[IDX_S.outletId], r));
+
+  GEO_POINTS.forEach(p=>{
+    if(brandI>=0 && p[GIDX.brandIdx]!==brandI) return;
+    if(branchI>=0 && p[GIDX.branchIdx]!==branchI) return;
+    if(microI>=0 && p[GIDX.microIdx]!==microI) return;
+    if(areaBranches && !areaBranches.has(META.branches[p[GIDX.branchIdx]])) return;
+    if(catI>=0 && p[GIDX.catIdx]!==catI) return;
+    if(searchTokens.length){
+      const hay = (String(p[GIDX.outletId]) + ' ' + String(p[GIDX.outletName]) + ' ' + META.branches[p[GIDX.branchIdx]]).toLowerCase();
+      if(!searchTokens.every(t=>hay.includes(t))) return;
+    }
+    shown++;
+    const isRed = p[GIDX.red];
+    const isNoStock = p[GIDX.noStock];
+    const brandName = META.brands[p[GIDX.brandIdx]];
+    const key = brandName+'|'+p[GIDX.outletId];
+    const stockRow = outletIdx.get(key);
+    const sellinRow = sellinIdx.get(key);
+    const stockSaldo = stockRow ? stockRow[IDX.salAmt] : null;
+    const sellinSp = sellinRow ? sellinRow[IDX_S.sellinSp] : null;
+    const sellinSaldo = sellinRow ? sellinRow[IDX_S.sellinSaldo] : null;
+    const marker = L.circleMarker([p[GIDX.lat], p[GIDX.lon]], {
+      radius: 3.2, color: isRed ? '#C81E3A' : '#1B8A5A', fillColor: isRed ? '#C81E3A' : '#1B8A5A',
+      fillOpacity: 0.75, weight: isRed ? 1 : 0.6
+    });
+    marker.bindPopup(
+      `<b>${p[GIDX.outletName]||'-'}</b><br>Outlet ID: ${p[GIDX.outletId]}<br>Brand: ${brandName} · Branch: ${META.branches[p[GIDX.branchIdx]]} · MC: ${META.micros[p[GIDX.microIdx]]}<br>Kategori: ${META.cats[p[GIDX.catIdx]]}<br>Lat/Long: ${p[GIDX.lat]}, ${p[GIDX.lon]}<br>Sell In SP: ${sellinSp!==null ? fmtN(sellinSp) : '-'}<br>Sell In Saldo: ${sellinSaldo!==null ? fmtN(sellinSaldo) : '-'}<br>Stock Saldo (Salmo): ${stockSaldo!==null ? fmtN(stockSaldo) : '-'}<br>Status: ${isRed ? '<span style="color:#C81E3A;font-weight:600;">Ada masalah (cek GA/Sell In SP/Sell In Saldo/Stock)</span>' : '<span style="color:#1B8A5A;font-weight:600;">Lengkap</span>'}${isNoStock ? '<br><span style="color:#C81E3A;font-weight:600;">⚠ Tidak ada stock sama sekali</span>' : ''}`
+    );
+    mapMarkerLayer.addLayer(marker);
+    if(searchTokens.length) shownLatLngs.push([p[GIDX.lat], p[GIDX.lon]]);
+  });
+  document.getElementById('mapPointCount').textContent = `${fmtN(shown)} outlet ditampilkan di peta`;
+
+  // when a search narrows things down (e.g. by Outlet ID), zoom the map to the
+  // matching point(s) instead of leaving it at whatever view it was showing before
+  if(searchTokens.length && shownLatLngs.length){
+    if(shownLatLngs.length === 1){
+      mapInstance.setView(shownLatLngs[0], 16);
+    } else {
+      mapInstance.fitBounds(L.latLngBounds(shownLatLngs), {maxZoom:14, padding:[30,30]});
+    }
+  }
+  }catch(e){
+    console.error('Gagal menampilkan titik peta', e);
+  }
+}
+
+// ---------- simple login gate with roles (client-side gate, not real security) ----------
+// NOTE: this only hides/shows UI in the browser — anyone who reads the page source can
+// still find how the check works. It's meant to stop casual/unauthorised use, not to
+// protect the data from a determined person. For real access control this would need a
+// proper backend.
+const DEFAULT_PASSWORD = 'wj2026';
+let USERS = [{ username: 'admin', password: DEFAULT_PASSWORD, role: 'admin', mustChangePassword: true }];
+let pendingLoginUser = null; // set while the force-change-password gate is open
+
+async function loadUsers(){
+  try{
+    const stored = await storageGet('users');
+    if(stored && Array.isArray(stored) && stored.length) USERS = stored;
+  }catch(e){}
+}
+async function saveUsers(){
+  await storageSet('users', USERS);
+}
+
+function currentRole(){ return localStorage.getItem('wj_user_role') || ''; }
+
+function applyLoginState(){
+  const loggedIn = localStorage.getItem('wj_logged_in') === '1';
+  document.getElementById('authGate').classList.toggle('hidden', loggedIn);
+  const isAdmin = loggedIn && currentRole() === 'admin';
+  document.getElementById('btnOpenUpdate').classList.toggle('hidden', !isAdmin);
+  document.getElementById('btnManageUsers').classList.toggle('hidden', !isAdmin);
+  document.getElementById('btnChangePass').classList.toggle('hidden', !loggedIn);
+  document.getElementById('btnLogout').classList.toggle('hidden', !loggedIn);
+  if(loggedIn){
+    const roleLabel = isAdmin ? 'admin' : 'viewer';
+    document.getElementById('loginUserLabel').textContent = (localStorage.getItem('wj_user') || '') + ' · ' + roleLabel;
+  }
+}
+
+function finishLogin(username, role){
+  localStorage.setItem('wj_logged_in', '1');
+  localStorage.setItem('wj_user', username);
+  localStorage.setItem('wj_user_role', role || 'viewer');
+  document.getElementById('authGate').classList.add('hidden');
+  document.getElementById('forceChangeGate').classList.add('hidden');
+  applyLoginState();
+  showToast('Berhasil login sebagai ' + username + '.');
+}
+
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  const match = USERS.find(x=>x.username===u && x.password===p);
+  if(match){
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    errEl.textContent = '';
+    // missing mustChangePassword is treated as "true" so accounts created before this
+    // feature existed are also required to set their own password once
+    const needsChange = match.mustChangePassword !== false;
+    if(needsChange){
+      pendingLoginUser = match.username;
+      document.getElementById('authGate').classList.add('hidden');
+      document.getElementById('forceChangeGate').classList.remove('hidden');
+    } else {
+      finishLogin(match.username, match.role);
+    }
+  } else {
+    errEl.textContent = 'Username atau password salah.';
+  }
+}
+
+async function doForceChangePassword(){
+  const p1 = document.getElementById('forceNewPass').value;
+  const p2 = document.getElementById('forceNewPass2').value;
+  const errEl = document.getElementById('forceChangeError');
+  if(!p1 || p1.length < 4){ errEl.textContent = 'Password minimal 4 karakter.'; return; }
+  if(p1 !== p2){ errEl.textContent = 'Password baru tidak sama.'; return; }
+  const user = USERS.find(x=>x.username===pendingLoginUser);
+  if(!user){ errEl.textContent = 'User tidak ditemukan, coba login ulang.'; return; }
+  errEl.textContent = 'Menyimpan...';
+  user.password = p1;
+  user.mustChangePassword = false;
+  await saveUsers();
+  document.getElementById('forceNewPass').value = '';
+  document.getElementById('forceNewPass2').value = '';
+  errEl.textContent = '';
+  finishLogin(user.username, user.role);
+  pendingLoginUser = null;
+}
+
+async function doChangePassword(){
+  const oldP = document.getElementById('cpOldPass').value;
+  const p1 = document.getElementById('cpNewPass').value;
+  const p2 = document.getElementById('cpNewPass2').value;
+  const errEl = document.getElementById('cpError');
+  const username = localStorage.getItem('wj_user');
+  const user = USERS.find(x=>x.username===username);
+  if(!user){ errEl.textContent = 'Sesi tidak valid, silakan login ulang.'; return; }
+  if(user.password !== oldP){ errEl.textContent = 'Password saat ini salah.'; return; }
+  if(!p1 || p1.length < 4){ errEl.textContent = 'Password baru minimal 4 karakter.'; return; }
+  if(p1 !== p2){ errEl.textContent = 'Password baru tidak sama.'; return; }
+  errEl.textContent = 'Menyimpan...';
+  user.password = p1;
+  user.mustChangePassword = false;
+  await saveUsers();
+  document.getElementById('cpOldPass').value = '';
+  document.getElementById('cpNewPass').value = '';
+  document.getElementById('cpNewPass2').value = '';
+  errEl.textContent = '';
+  document.getElementById('changePassOverlay').classList.remove('show');
+  showToast('Password berhasil diganti.');
+}
+
+function doLogout(){
+  localStorage.removeItem('wj_logged_in');
+  localStorage.removeItem('wj_user');
+  localStorage.removeItem('wj_user_role');
+  applyLoginState();
+}
+
+function renderUserList(){
+  document.getElementById('defaultPassLabel').textContent = DEFAULT_PASSWORD;
+  document.getElementById('userListBody').innerHTML = USERS.map(u=>`
+    <tr>
+      <td>${u.username}</td>
+      <td class="mono">${u.mustChangePassword!==false ? '<i style="color:var(--muted);">(belum diganti)</i>' : '••••••••'}</td>
+      <td>
+        <select data-user="${u.username}" onchange="setUserRole(this.dataset.user, this.value)" style="font-size:11.5px;padding:3px 4px;">
+          <option value="viewer" ${u.role!=='admin'?'selected':''}>Viewer (lihat+unduh)</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Admin (bisa upload)</option>
+        </select>
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" data-user="${u.username}" onclick="resetUserPassword(this.dataset.user)">Reset Pass</button>
+        <button class="btn btn-ghost btn-sm" data-user="${u.username}" onclick="removeUserByName(this.dataset.user)">Hapus</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted);">Belum ada user.</td></tr>';
+}
+
+async function resetUserPassword(name){
+  const u = USERS.find(x=>x.username===name);
+  if(!u) return;
+  if(!confirm(`Reset password "${name}" ke default (${DEFAULT_PASSWORD})? User ini akan diminta membuat password baru saat login berikutnya.`)) return;
+  u.password = DEFAULT_PASSWORD;
+  u.mustChangePassword = true;
+  await saveUsers();
+  showToast(`Password "${name}" direset ke default.`);
+  renderUserList();
+}
+window.resetUserPassword = resetUserPassword;
+
+async function addUser(){
+  const input = document.getElementById('newUserInput');
+  const name = input.value.trim();
+  const msg = document.getElementById('userAddMsg');
+  if(!name){ msg.textContent = 'Isi username dulu.'; return; }
+  if(USERS.find(u=>u.username.toLowerCase()===name.toLowerCase())){ msg.textContent = 'Username sudah ada.'; return; }
+  // new users default to viewer (view + download only) — promote to admin manually if needed
+  USERS.push({ username: name, password: DEFAULT_PASSWORD, role: 'viewer', mustChangePassword: true });
+  msg.textContent = 'Menyimpan...';
+  await saveUsers();
+  msg.textContent = `User "${name}" ditambahkan sebagai Viewer dengan password default.`;
+  input.value = '';
+  renderUserList();
+}
+
+function handleBulkUserFile(file){
+  const msg = document.getElementById('bulkUserMsg');
+  msg.textContent = 'Membaca file...';
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const text = e.target.result;
+      // accept one username per line, or comma/semicolon separated, ignore blank lines
+      const names = text.split(/[\r\n,;]+/).map(s=>s.trim()).filter(Boolean);
+      const existing = new Set(USERS.map(u=>u.username.toLowerCase()));
+      let added = 0, skipped = 0;
+      const seenThisBatch = new Set();
+      names.forEach(name=>{
+        const key = name.toLowerCase();
+        if(existing.has(key) || seenThisBatch.has(key)){ skipped++; return; }
+        seenThisBatch.add(key);
+        USERS.push({ username: name, password: DEFAULT_PASSWORD, role: 'viewer', mustChangePassword: true });
+        added++;
+      });
+      msg.textContent = `Menyimpan ${added} user baru...`;
+      await saveUsers();
+      msg.textContent = `Selesai. ${added} user baru ditambahkan sebagai Viewer (password default)${skipped? `, ${skipped} dilewati karena sudah ada/duplikat`:''}.`;
+      renderUserList();
+    }catch(err){
+      msg.textContent = 'Gagal memproses file: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function setUserRole(name, role){
+  const u = USERS.find(x=>x.username===name);
+  if(!u) return;
+  u.role = role;
+  await saveUsers();
+  showToast(`Role "${name}" diubah ke ${role==='admin'?'Admin':'Viewer'}.`);
+  if(name === localStorage.getItem('wj_user')){
+    localStorage.setItem('wj_user_role', role);
+    applyLoginState();
+  }
+}
+window.setUserRole = setUserRole;
+
+async function removeUserByName(name){
+  if(USERS.length<=1){ showToast('Tidak bisa menghapus user terakhir.'); return; }
+  if(!confirm(`Hapus user "${name}"?`)) return;
+  USERS = USERS.filter(u=>u.username!==name);
+  await saveUsers();
+  renderUserList();
+}
+window.removeUserByName = removeUserByName;
+
+function bindEvents(){
+  document.getElementById('fBrand').addEventListener('change', applyFilters);
+  document.getElementById('fArea').addEventListener('change', ()=>{ refreshBranchOptions(); refreshMicroOptions(); applyFilters(); });
+  document.getElementById('fBranch').addEventListener('change', ()=>{ refreshMicroOptions(); applyFilters(); });
+  document.getElementById('fMicro').addEventListener('change', applyFilters);
+  document.getElementById('fSearch').addEventListener('input', debounce(applyFilters, 200));
+
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      activeCat = chip.dataset.cat;
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll('#tabLowBalance table.data thead th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.k;
+      if(sortKey===k) sortDir *= -1; else { sortKey=k; sortDir = -1; }
+      sortFiltered(); page=1; renderTable();
+    });
+  });
+  document.querySelectorAll('#tabSellin table.data thead th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.sk;
+      if(siSortKey===k) siSortDir *= -1; else { siSortKey=k; siSortDir = -1; }
+      sortFilteredSellin(); siPage=1; renderSellinTable();
+    });
+  });
+
+  document.getElementById('prevPage').addEventListener('click', ()=>{ if(page>1){page--; renderTable();} });
+  document.getElementById('nextPage').addEventListener('click', ()=>{ const tp=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE)); if(page<tp){page++; renderTable();} });
+  document.getElementById('siPrevPage').addEventListener('click', ()=>{ if(siPage>1){siPage--; renderSellinTable();} });
+  document.getElementById('siNextPage').addEventListener('click', ()=>{ const tp=Math.max(1,Math.ceil(filteredSellin.length/PAGE_SIZE)); if(siPage<tp){siPage++; renderSellinTable();} });
+
+  document.getElementById('btnDownloadAll').addEventListener('click', exportCsv);
+  document.getElementById('btnDownloadCombined').addEventListener('click', exportCombinedCsv);
+  document.getElementById('btnDownloadSummaryTable').addEventListener('click', exportSummaryTableCsv);
+  document.getElementById('btnDownloadCombinedTable').addEventListener('click', exportCombinedCsv);
+  document.getElementById('combinedPrevPage').addEventListener('click', ()=>{ if(combinedPage>1){combinedPage--; renderCombinedTable();} });
+  document.getElementById('combinedNextPage').addEventListener('click', ()=>{ const tp=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE)); if(combinedPage<tp){combinedPage++; renderCombinedTable();} });
+  document.getElementById('btnDownloadTable').addEventListener('click', exportCsv);
+  document.getElementById('siBtnDownloadTable').addEventListener('click', exportSellinCsv);
+  document.getElementById('btnRefresh').addEventListener('click', ()=>checkForRemoteUpdate(false));
+
+  document.getElementById('btnOpenUpdate').addEventListener('click', ()=>document.getElementById('updateOverlay').classList.add('show'));
+  document.getElementById('closeUpdate').addEventListener('click', ()=>document.getElementById('updateOverlay').classList.remove('show'));
+  document.getElementById('btnDoLogin').addEventListener('click', doLogin);
+  document.getElementById('loginPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById('btnForceChangePass').addEventListener('click', doForceChangePassword);
+  document.getElementById('forceNewPass2').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doForceChangePassword(); });
+  document.getElementById('btnChangePass').addEventListener('click', ()=>document.getElementById('changePassOverlay').classList.add('show'));
+  document.getElementById('closeChangePass').addEventListener('click', ()=>document.getElementById('changePassOverlay').classList.remove('show'));
+  document.getElementById('changePassOverlay').addEventListener('click', (e)=>{ if(e.target.id==='changePassOverlay') e.currentTarget.classList.remove('show'); });
+  document.getElementById('btnDoChangePass').addEventListener('click', doChangePassword);
+  document.getElementById('cpNewPass2').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doChangePassword(); });
+  document.getElementById('btnLogout').addEventListener('click', doLogout);
+  document.getElementById('btnManageUsers').addEventListener('click', ()=>{ renderUserList(); document.getElementById('usersOverlay').classList.add('show'); });
+  document.getElementById('closeUsers').addEventListener('click', ()=>document.getElementById('usersOverlay').classList.remove('show'));
+  document.getElementById('usersOverlay').addEventListener('click', (e)=>{ if(e.target.id==='usersOverlay') e.currentTarget.classList.remove('show'); });
+  document.getElementById('btnAddUser').addEventListener('click', addUser);
+  document.getElementById('bulkUserFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleBulkUserFile(e.target.files[0]); });
+  document.getElementById('newUserInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addUser(); });
+  document.getElementById('updateOverlay').addEventListener('click', (e)=>{ if(e.target.id==='updateOverlay') e.currentTarget.classList.remove('show'); });
+
+  document.getElementById('stockFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleStockFile(e.target.files[0]); });
+  document.getElementById('masterFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleMasterFile(e.target.files[0]); });
+  document.getElementById('sellinFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleSellinFile(e.target.files[0]); });
+
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab;
+      document.getElementById('tabPeta').classList.toggle('hidden', activeTab!=='peta');
+      document.getElementById('tabLowBalance').classList.toggle('hidden', activeTab!=='lowbalance');
+      document.getElementById('tabSellin').classList.toggle('hidden', activeTab!=='sellin');
+      if(activeTab==='sellin') renderSellinAll();
+      if(activeTab==='peta'){ renderPetaAll(); setTimeout(()=>{ if(mapInstance) mapInstance.invalidateSize(); }, 50); }
+    });
+  });
+}
+
+async function loadGeoFromStorageOrSeed(){
+  const GEO_FIELDS = ['lat','lon','brandIdx','branchIdx','microIdx','catIdx','red','noStock','outletId','outletName'];
+  GIDX = Object.fromEntries(GEO_FIELDS.map((k,i)=>[k,i]));
+  try{
+    const storedPoints = await storageGet('geo_points');
+    if(storedPoints && Array.isArray(storedPoints) && storedPoints.length){
+      GEO_POINTS = storedPoints;
+    } else if(window.__SEED_GEO__){
+      GEO_POINTS = window.__SEED_GEO__.points;
+      await storageSet('geo_points', GEO_POINTS);
+    }
+  }catch(e){ console.error('geo points load failed', e); }
+  try{
+    const storedKab = await storageGet('kab_boundaries');
+    if(storedKab && storedKab.features){
+      KAB_GEOJSON = storedKab;
+    } else if(window.__KAB_BOUNDARIES__){
+      KAB_GEOJSON = window.__KAB_BOUNDARIES__;
+      await storageSet('kab_boundaries', KAB_GEOJSON);
+    }
+  }catch(e){ console.error('kab boundaries load failed', e); }
+}
+
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+async function init(){
+  await loadFromStorageOrSeed();
+  await loadSellinFromStorageOrSeed();
+  await loadUsers();
+  await loadGeoFromStorageOrSeed();
+  // "Perbarui data" is hidden by default so people who only have the shared link can
+  // view/download but not overwrite the online data. Logging in as admin unlocks it.
+  applyLoginState();
+  refreshHeaderMeta();
+  populateAreaBranch();
+  bindEvents();
+  applyFilters();
+  startPolling();
+}
+init();
+
+})();
+</script>
+</body>
+</html>
