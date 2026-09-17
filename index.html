@@ -666,6 +666,11 @@
       <input type="file" id="bulkUserFile" accept=".csv,.txt">
       <div class="progress-line" id="bulkUserMsg"></div>
     </div>
+    <div class="upload-block">
+      <label style="font-size:12.5px;display:block;margin-bottom:4px;">Reset password semua user sekaligus (kembali ke default, semua wajib bikin password baru saat login berikutnya)</label>
+      <button class="btn btn-ghost btn-sm" id="btnResetAllPass" style="color:var(--red);border-color:var(--red);">Reset Password Semua User</button>
+      <div class="progress-line" id="resetAllMsg"></div>
+    </div>
     <div style="max-height:300px;overflow:auto;margin-top:10px;">
       <table class="summary" style="width:100%;">
         <thead><tr><th style="text-align:left;">Username</th><th style="text-align:left;">Password</th><th style="text-align:left;">Role</th><th></th></tr></thead>
@@ -837,9 +842,18 @@ function showToast(msg){
 // dashboard works fully standalone (any browser, any device, no Claude needed).
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwufdPVWe4ah-0L6nu0kCEhz2XVd2TpVtZ7gncQsHRod5EbCWAuQPBPET6u-64P6hvu9w/exec';
 
+// Wraps fetch with a hard timeout — if the Apps Script backend hangs (it has done
+// this before under load), we abort and move on instead of the whole page getting
+// stuck forever waiting for a promise that never resolves or rejects.
+function fetchWithTimeout(url, opts, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs || 12000);
+  return fetch(url, {...(opts||{}), signal: controller.signal}).finally(()=>clearTimeout(timer));
+}
+
 async function storageGet(key){
   try{
-    const res = await fetch(`${GAS_URL}?action=get&key=${encodeURIComponent(key)}`);
+    const res = await fetchWithTimeout(`${GAS_URL}?action=get&key=${encodeURIComponent(key)}`, null, 12000);
     const data = await res.json();
     if(!data.ok || !data.found) return null;
     return JSON.parse(data.value);
@@ -850,11 +864,11 @@ async function storageSet(key, val){
     // sent as text/plain on purpose — this avoids a CORS "preflight" request
     // that Apps Script Web Apps don't handle well; the body is still JSON,
     // just parsed manually on the Apps Script side.
-    const res = await fetch(GAS_URL, {
+    const res = await fetchWithTimeout(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'set', key: key, value: JSON.stringify(val) })
-    });
+    }, 20000);
     const data = await res.json();
     return !!(data && data.ok);
   }catch(e){ console.error('storage set failed', key, e); return false; }
@@ -2513,6 +2527,21 @@ async function resetUserPassword(name){
 }
 window.resetUserPassword = resetUserPassword;
 
+async function resetAllPasswords(){
+  const msg = document.getElementById('resetAllMsg');
+  if(!confirm(`Reset password SEMUA ${USERS.length} user ke default (${DEFAULT_PASSWORD})? Semua user (termasuk kamu sendiri) akan diminta membuat password baru saat login berikutnya. Tindakan ini tidak bisa dibatalkan.`)) return;
+  msg.textContent = 'Mereset semua password...';
+  USERS.forEach(u=>{ u.password = DEFAULT_PASSWORD; u.mustChangePassword = true; });
+  await saveUsers();
+  msg.textContent = `Selesai. Password ${USERS.length} user direset ke default (${DEFAULT_PASSWORD}).`;
+  showToast('Semua password berhasil direset ke default.');
+  renderUserList();
+  // the current session's own credentials just changed too — force a fresh login
+  // next time so it can't silently keep using a now-invalid remembered state
+  doLogout();
+}
+window.resetAllPasswords = resetAllPasswords;
+
 async function addUser(){
   const input = document.getElementById('newUserInput');
   const name = input.value.trim();
@@ -2642,6 +2671,7 @@ function bindEvents(){
   document.getElementById('closeUsers').addEventListener('click', ()=>document.getElementById('usersOverlay').classList.remove('show'));
   document.getElementById('usersOverlay').addEventListener('click', (e)=>{ if(e.target.id==='usersOverlay') e.currentTarget.classList.remove('show'); });
   document.getElementById('btnAddUser').addEventListener('click', addUser);
+  document.getElementById('btnResetAllPass').addEventListener('click', resetAllPasswords);
   document.getElementById('bulkUserFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleBulkUserFile(e.target.files[0]); });
   document.getElementById('newUserInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addUser(); });
   document.getElementById('updateOverlay').addEventListener('click', (e)=>{ if(e.target.id==='updateOverlay') e.currentTarget.classList.remove('show'); });
@@ -2690,11 +2720,17 @@ async function loadGeoFromStorageOrSeed(){
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
 async function init(){
-  await loadFromStorageOrSeed();
-  await loadSellinFromStorageOrSeed();
-  await loadUsers();
-  await loadUpdateLog();
-  await loadGeoFromStorageOrSeed();
+  try{
+    await loadFromStorageOrSeed();
+    await loadSellinFromStorageOrSeed();
+    await loadUsers();
+    await loadUpdateLog();
+    await loadGeoFromStorageOrSeed();
+  }catch(e){
+    // even if something above failed unexpectedly, make sure the login form and
+    // buttons still work — a broken data load should never leave the page inert
+    console.error('init: data loading failed, continuing with defaults', e);
+  }
   // "Perbarui data" is hidden by default so people who only have the shared link can
   // view/download but not overwrite the online data. Logging in as admin unlocks it.
   applyLoginState();
