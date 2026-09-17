@@ -218,7 +218,7 @@
       <h1 class="h1">Outlet Performance
         <small>Monitoring GA, Sell In &amp; Stock per Outlet</small>
       </h1>
-      <div class="meta-line">Periode data stok: <b id="metaAsOf">–</b> &nbsp;·&nbsp; Data outlet (pairing) per: <b id="metaMasterDate">–</b> &nbsp;·&nbsp; Diperbarui terakhir: <b id="metaUpdated">–</b></div>
+      <div class="meta-line">Periode data stok: <b id="metaAsOf">–</b> &nbsp;·&nbsp; Sell In per: <b id="metaSellinDate">–</b> &nbsp;·&nbsp; GA per: <b id="metaGaDate">–</b> &nbsp;·&nbsp; Data outlet (pairing) per: <b id="metaMasterDate">–</b> &nbsp;·&nbsp; Diperbarui terakhir: <b id="metaUpdated">–</b></div>
     </div>
     <div style="display:flex;gap:10px;">
       <button class="btn" id="btnRefresh"><span class="refresh-dot"></span>Cek update</button>
@@ -744,9 +744,20 @@
 
     <div class="upload-block">
       <h4>3. Data Sell In &amp; GA — DSE_PROD (CSV, per brand)</h4>
-      <p class="hint">Upload file IM3_DSE_PROD dan/atau 3ID_DSE_PROD bulan berjalan (region difilter otomatis ke WEST JAVA). Brand terdeteksi otomatis dari struktur kolom file.</p>
-      <input type="file" id="sellinFile" accept=".csv">
+      <p class="hint">Upload file IM3_DSE_PROD dan/atau 3ID_DSE_PROD bulan berjalan (region difilter otomatis ke WEST JAVA). Brand terdeteksi otomatis dari struktur kolom file. Bisa pilih 2 file (IM3 + 3ID) sekaligus — diproses satu per satu otomatis.</p>
+      <input type="file" id="sellinFile" accept=".csv" multiple>
       <div class="progress-line" id="sellinProgress"></div>
+    </div>
+
+    <div class="upload-block">
+      <h4>Riwayat Update</h4>
+      <p class="hint">Catatan update terakhir (jenis data, detail, jumlah baris, waktu).</p>
+      <div style="max-height:200px;overflow:auto;">
+        <table class="summary" style="width:100%;">
+          <thead><tr><th style="text-align:left;">Waktu</th><th style="text-align:left;">Jenis</th><th style="text-align:left;">Detail</th><th>Jumlah</th></tr></thead>
+          <tbody id="updateLogBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1813,6 +1824,7 @@ async function finishStockProcessing(data, progressEl){
   progressEl.textContent = `Menyimpan data online (${outlets.length.toLocaleString('id-ID')} outlet)…`;
   await persistAll();
   progressEl.textContent = `Selesai. ${outlets.length.toLocaleString('id-ID')} outlet diperbarui, per ${maxAsOf||'-'}.`;
+  await logUpdate('Stock Outlet', maxAsOf||'-', outlets.length);
 
   refreshHeaderMeta();
   populateAreaBranch();
@@ -1941,6 +1953,7 @@ function handleMasterFile(file){
       await persistAll();
       if(SMETA) await persistSellin();
       progressEl.textContent = `Selesai. Total ${newOutlets.length.toLocaleString('id-ID')} outlet (IM3: ${n1}, 3ID: ${n2}). Angka stok/sell-in memakai data terakhir; upload ulang file stok/sell-in bila perlu menyegarkan.`;
+      await logUpdate('Pairing Outlet', `IM3: ${n1}, 3ID: ${n2}`, newOutlets.length);
       refreshHeaderMeta();
       populateAreaBranch();
       applyFilters();
@@ -1956,26 +1969,36 @@ const IM3_SI_COLS = {region:'region', branch:'branch', micro:'micro_cluster', id
 const TID_SI_COLS = {region:'region', branch:'branch', micro:'mc_ts', id_outlet:'id_outlet', rgu_ga:'rgu_ga', qsso:'qsso', sp:'osa_sp', vou:'osa_vou', saldo:'osa_saldo', tertiary:'tertiary', secondary:'secondary'};
 
 function handleSellinFile(file){
-  const progressEl = document.getElementById('sellinProgress');
-  progressEl.textContent = 'Membaca header file…';
+  return new Promise((resolve) => {
+    const progressEl = document.getElementById('sellinProgress');
+    progressEl.textContent = `Membaca header file (${file.name})…`;
 
-  Papa.parse(file, {
-    header: true,
-    delimiter: ';',
-    preview: 1,
-    complete: function(headRes){
-      const cols = headRes.meta.fields || [];
-      let brand = null, colMap = null;
-      if(cols.includes('mc_ts')){ brand = '3ID'; colMap = TID_SI_COLS; }
-      else if(cols.includes('micro_cluster')){ brand = 'IM3'; colMap = IM3_SI_COLS; }
-      if(!brand){ progressEl.textContent = 'Format file tidak dikenali (bukan DSE_PROD IM3/3ID).'; return; }
-      parseSellinBody(file, brand, colMap, progressEl);
-    },
-    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; }
+    Papa.parse(file, {
+      header: true,
+      delimiter: ';',
+      preview: 1,
+      complete: function(headRes){
+        const cols = headRes.meta.fields || [];
+        let brand = null, colMap = null;
+        if(cols.includes('mc_ts')){ brand = '3ID'; colMap = TID_SI_COLS; }
+        else if(cols.includes('micro_cluster')){ brand = 'IM3'; colMap = IM3_SI_COLS; }
+        if(!brand){ progressEl.textContent = `Format file "${file.name}" tidak dikenali (bukan DSE_PROD IM3/3ID).`; resolve(); return; }
+        parseSellinBody(file, brand, colMap, progressEl).then(resolve);
+      },
+      error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; resolve(); }
+    });
   });
 }
 
+async function handleSellinFiles(fileList){
+  const files = Array.from(fileList);
+  for(let i=0;i<files.length;i++){
+    await handleSellinFile(files[i]);
+  }
+}
+
 function parseSellinBody(file, brand, colMap, progressEl){
+  return new Promise((resolve) => {
   const byKey = {};
   let rowCount = 0, matched = 0;
 
@@ -2002,9 +2025,10 @@ function parseSellinBody(file, brand, colMap, progressEl){
     },
     complete: function(){
       progressEl.textContent = `Menggabungkan data Sell In & GA ${brand} (${matched.toLocaleString('id-ID')} outlet cocok)…`;
-      setTimeout(()=>finishSellinProcessing(brand, byKey, progressEl), 30);
+      setTimeout(()=>finishSellinProcessing(brand, byKey, progressEl).then(resolve), 30);
     },
-    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; }
+    error: function(err){ progressEl.textContent = 'Gagal membaca file: ' + err; resolve(); }
+  });
   });
 }
 
@@ -2032,6 +2056,8 @@ async function finishSellinProcessing(brand, byKey, progressEl){
   progressEl.textContent = `Menyimpan data Sell In & GA online (${SELLIN_OUTLETS.length.toLocaleString('id-ID')} outlet)…`;
   await persistSellin();
   progressEl.textContent = `Selesai. Data Sell In & GA ${brand} diperbarui (${rebuilt.length.toLocaleString('id-ID')} outlet).`;
+  await logUpdate('Sell In & GA', brand, rebuilt.length);
+  refreshHeaderMeta();
   applyFilters();
 }
 
@@ -2040,6 +2066,16 @@ function refreshHeaderMeta(){
   document.getElementById('metaAsOf').textContent = META.asOf || '–';
   document.getElementById('metaMasterDate').textContent = META.masterUpdated ? new Date(META.masterUpdated).toLocaleDateString('id-ID') : '–';
   document.getElementById('metaUpdated').textContent = META.lastUpdated ? new Date(META.lastUpdated).toLocaleString('id-ID') : '–';
+  // Sell In and GA come from the same source file (DSE_PROD per brand), so they
+  // share the same "as of" date — shown separately anyway since they're
+  // conceptually different metrics people ask about individually.
+  if(SMETA){
+    const sellinDate = SMETA.lastUpdated
+      ? new Date(SMETA.lastUpdated).toLocaleDateString('id-ID')
+      : (SMETA.asOf || '–');
+    document.getElementById('metaSellinDate').textContent = sellinDate;
+    document.getElementById('metaGaDate').textContent = sellinDate;
+  }
 }
 
 // ---------- Peta & Ringkasan tab ----------
@@ -2304,6 +2340,37 @@ function renderMapPoints(){
 // proper backend.
 const DEFAULT_PASSWORD = 'wj2026';
 let USERS = [{ username: 'admin', password: DEFAULT_PASSWORD, role: 'admin', mustChangePassword: true }];
+let UPDATE_LOG = [];
+
+async function loadUpdateLog(){
+  try{
+    const stored = await storageGet('update_log');
+    if(stored && Array.isArray(stored)) UPDATE_LOG = stored;
+  }catch(e){}
+}
+
+async function logUpdate(type, detail, count){
+  UPDATE_LOG.unshift({
+    time: new Date().toISOString(),
+    type, detail, count,
+    user: localStorage.getItem('wj_user') || '-'
+  });
+  UPDATE_LOG = UPDATE_LOG.slice(0, 50); // keep the last 50 entries
+  await storageSet('update_log', UPDATE_LOG);
+  renderUpdateLog();
+}
+
+function renderUpdateLog(){
+  const body = document.getElementById('updateLogBody');
+  if(!body) return;
+  body.innerHTML = UPDATE_LOG.map(e=>`
+    <tr>
+      <td>${new Date(e.time).toLocaleString('id-ID')}</td>
+      <td>${e.type}</td>
+      <td>${e.detail} <span style="color:var(--muted);">(oleh ${e.user})</span></td>
+      <td>${fmtN(e.count)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted);">Belum ada riwayat update.</td></tr>';
+}
 let pendingLoginUser = null; // set while the force-change-password gate is open
 
 async function loadUsers(){
@@ -2559,7 +2626,7 @@ function bindEvents(){
   document.getElementById('siBtnDownloadTable').addEventListener('click', exportSellinCsv);
   document.getElementById('btnRefresh').addEventListener('click', ()=>checkForRemoteUpdate(false));
 
-  document.getElementById('btnOpenUpdate').addEventListener('click', ()=>document.getElementById('updateOverlay').classList.add('show'));
+  document.getElementById('btnOpenUpdate').addEventListener('click', ()=>{ renderUpdateLog(); document.getElementById('updateOverlay').classList.add('show'); });
   document.getElementById('closeUpdate').addEventListener('click', ()=>document.getElementById('updateOverlay').classList.remove('show'));
   document.getElementById('btnDoLogin').addEventListener('click', doLogin);
   document.getElementById('loginPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
@@ -2581,7 +2648,7 @@ function bindEvents(){
 
   document.getElementById('stockFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleStockFile(e.target.files[0]); });
   document.getElementById('masterFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleMasterFile(e.target.files[0]); });
-  document.getElementById('sellinFile').addEventListener('change', (e)=>{ if(e.target.files[0]) handleSellinFile(e.target.files[0]); });
+  document.getElementById('sellinFile').addEventListener('change', (e)=>{ if(e.target.files.length) handleSellinFiles(e.target.files); });
 
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -2626,6 +2693,7 @@ async function init(){
   await loadFromStorageOrSeed();
   await loadSellinFromStorageOrSeed();
   await loadUsers();
+  await loadUpdateLog();
   await loadGeoFromStorageOrSeed();
   // "Perbarui data" is hidden by default so people who only have the shared link can
   // view/download but not overwrite the online data. Logging in as admin unlocks it.
